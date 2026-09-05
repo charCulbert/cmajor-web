@@ -1,0 +1,96 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+//
+//  The Cmajor project is subject to commercial or open-source licensing.
+//  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or
+//  visit https://cmajor.dev to learn about our commercial licence options.
+//
+//  CMAJOR IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+//  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+//  DISCLAIMED.
+
+
+/// This is a simple algorithm presenting the use of the convolution namespace to implement
+/// a convolution reverb. The impulse response is fixed, this is just a demonstrator
+graph ConvolutionReverb [[ main ]]
+{
+    input event float32 dryLevel [[ name: "Dry Level", min: -48, max: 6, init: 0, unit: "db" ]];
+    input event float32 wetLevel [[ name: "Wet Level", min: -48, max: 6, init: -24, unit: "db" ]];
+
+    input stream float in;
+    output stream float out;
+
+    let maxImpulseLength = 100000;
+    let shortFFTSize     = 32;
+    let longFFTSize      = 1024;
+
+    node dryGain = LevelSmoother;
+    node wetGain = LevelSmoother;
+
+    node convolution = std::convolution::ZeroLatencyProcessor (maxImpulseLength, shortFFTSize, longFFTSize);
+
+    connection
+    {
+        ImpulseSource.impulseData -> convolution.impulseData;
+        dryLevel -> dryGain;
+        wetLevel -> wetGain;
+
+        in -> convolution.in;
+        in * dryGain.out -> out;
+        convolution.out * wetGain.out -> out;
+    }
+}
+
+/// Processor used to pass the initial impulse data to the convolution algorithm
+processor ImpulseSource
+{
+    output event float[] impulseData;
+
+    external float[] reverb;
+
+    void main()
+    {
+        impulseData <- reverb;
+        advance();
+    }
+}
+
+
+/// Smoother for gain parameters
+processor LevelSmoother
+{
+    input event float db;
+    output stream float out;
+
+    event db (float f)
+    {
+        target = std::levels::dBtoGain (f);
+    }
+
+    let smoothingFrames = int (processor.frequency / 100);
+    float target;
+
+    void main()
+    {
+        float v;
+
+        loop
+        {
+            float step = ((target - v) / 2.0f) / smoothingFrames;
+
+            loop (smoothingFrames)
+            {
+                out <- v;
+                v += step;
+                advance();
+            }
+        }
+    }
+}

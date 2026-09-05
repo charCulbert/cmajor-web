@@ -1,0 +1,34 @@
+{
+  "name": "cmajor-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "GPL-3.0-or-later",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test test/*.test.js",
+    "sync:cmajor-examples": "node scripts/sync-cmajor-examples.mjs"
+  },
+  "dependencies": {
+    "@codemirror/autocomplete": "^6.18.6",
+    "@codemirror/commands": "^6.8.1",
+    "@codemirror/lang-javascript": "^6.2.4",
+    "@codemirror/language": "^6.11.1",
+    "@codemirror/lint": "^6.8.5",
+    "@codemirror/search": "^6.5.11",
+    "@codemirror/state": "^6.5.2",
+    "@codemirror/view": "^6.36.8",
+    "@lezer/highlight": "^1.2.3",
+    "@replit/codemirror-vim": "^6.2.1",
+    "codemirror": "^6.0.2",
+    "compost": "github:charCulbert/compost#66c56dd508e21d1724dcab6cbebd0e5d98fb4a97"
+  },
+  "devDependencies": {
+    "vite": "^7.1.3"
+  }
+}

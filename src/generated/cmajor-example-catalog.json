@@ -1,0 +1,462 @@
+[
+  {
+    "id": "cmajor-808",
+    "name": "808",
+    "directory": "808",
+    "manifest": "808.cmajorpatch",
+    "files": [
+      "808.cmajor",
+      "808.cmajorpatch",
+      "BD.ogg",
+      "CB.ogg",
+      "CH.ogg",
+      "CL.ogg",
+      "CP.ogg",
+      "CY.ogg",
+      "HC.ogg",
+      "HT.ogg",
+      "LC.ogg",
+      "LT.ogg",
+      "MA.ogg",
+      "MC.ogg",
+      "MT.ogg",
+      "OH.ogg",
+      "RS.ogg",
+      "SD.ogg"
+    ]
+  },
+  {
+    "id": "cmajor-claude-filtereq",
+    "name": "FilterEQ",
+    "directory": "Claude/FilterEQ",
+    "manifest": "FilterEQ.cmajorpatch",
+    "files": [
+      "FilterEQ.cmajor",
+      "FilterEQ.cmajorpatch",
+      "FilterEQ_GUI.js",
+      "INFO.md",
+      "README.md",
+      "claudeSession.txt",
+      "filter.md"
+    ]
+  },
+  {
+    "id": "cmajor-compufart",
+    "name": "CompuFart",
+    "directory": "CompuFart",
+    "manifest": "CompuFartSynth.cmajorpatch",
+    "files": [
+      "Audolon.cmajor",
+      "CompuFart.cmajor",
+      "CompuFartSynth.cmajor",
+      "CompuFartSynth.cmajorpatch",
+      "Delay.cmajor",
+      "Envelopes.cmajor",
+      "LICENSE",
+      "README.md",
+      "RePoot.cmajor",
+      "Utils.cmajor"
+    ]
+  },
+  {
+    "id": "cmajor-convolutionreverb",
+    "name": "reverb",
+    "directory": "ConvolutionReverb",
+    "manifest": "reverb.cmajorpatch",
+    "files": [
+      "impulse.wav",
+      "reverb.cmajor",
+      "reverb.cmajorpatch"
+    ]
+  },
+  {
+    "id": "cmajor-customgui",
+    "name": "Freeverb (with custom GUI)",
+    "directory": "CustomGUI",
+    "manifest": "Freeverb_CustomGUI.cmajorpatch",
+    "files": [
+      "Freeverb_CustomGUI.cmajor",
+      "Freeverb_CustomGUI.cmajorpatch",
+      "demo_ui/index.js"
+    ]
+  },
+  {
+    "id": "cmajor-electricpiano",
+    "name": "Electric Piano",
+    "directory": "ElectricPiano",
+    "manifest": "ElectricPiano.cmajorpatch",
+    "files": [
+      "ElectricPiano.cmajor",
+      "ElectricPiano.cmajorpatch",
+      "README.md"
+    ]
+  },
+  {
+    "id": "cmajor-faustfm",
+    "name": "Faust + Cmajor integration example",
+    "directory": "FaustFM",
+    "manifest": "FaustFM.cmajorpatch",
+    "files": [
+      "FaustFM.cmajorpatch",
+      "README.md",
+      "freeverb.dsp",
+      "synth.cmajor",
+      "transform/faustModule.js",
+      "transform/faustTransformer.js",
+      "voice.dsp"
+    ]
+  },
+  {
+    "id": "cmajor-filter",
+    "name": "Filter",
+    "directory": "Filter",
+    "manifest": "Filter.cmajorpatch",
+    "files": [
+      "Filter.cmajor",
+      "Filter.cmajorpatch"
+    ]
+  },
+  {
+    "id": "cmajor-filterbank",
+    "name": "FilterBank",
+    "directory": "FilterBank",
+    "manifest": "FilterBank.cmajorpatch",
+    "files": [
+      ".gitignore",
+      "FilterBank.cmajor",
+      "FilterBank.cmajorpatch",
+      "README.md",
+      "gui/dist/asset-manifest.json",
+      "gui/dist/index.html",
+      "gui/dist/index.js",
+      "gui/dist/static/css/main.70d7fc3b.css",
+      "gui/dist/static/js/main.d7698c7a.js",
+      "gui/dist/static/js/main.d7698c7a.js.LICENSE.txt",
+      "gui/index.js",
+      "gui/package-lock.json",
+      "gui/package.json",
+      "gui/public/index.html",
+      "gui/src/SpectrumAnalyzer.jsx",
+      "gui/src/View.jsx",
+      "gui/src/index.css",
+      "gui/src/index.js",
+      "screenshot.png"
+    ]
+  },
+  {
+    "id": "cmajor-freeverb",
+    "name": "Freeverb",
+    "directory": "Freeverb",
+    "manifest": "Freeverb.cmajorpatch",
+    "files": [
+      "Freeverb.cmajor",
+      "Freeverb.cmajorpatch"
+    ]
+  },
+  {
+    "id": "cmajor-guitarlstm",
+    "name": "GuitarLSTM",
+    "directory": "GuitarLSTM",
+    "manifest": "GuitarLSTM.cmajorpatch",
+    "files": [
+      "GuitarLSTM.cmajor",
+      "GuitarLSTM.cmajorpatch",
+      "README.md",
+      "rtneural.cmajor"
+    ]
+  },
+  {
+    "id": "cmajor-helloworld",
+    "name": "Hello World",
+    "directory": "HelloWorld",
+    "manifest": "HelloWorld.cmajorpatch",
+    "files": [
+      "HelloWorld.cmajor",
+      "HelloWorld.cmajorpatch"
+    ]
+  },
+  {
+    "id": "cmajor-helloworldmidi",
+    "name": "Hello World (MIDI version)",
+    "directory": "HelloWorldMidi",
+    "manifest": "HelloWorldMidi.cmajorpatch",
+    "files": [
+      "HelloWorldMidi.cmajor",
+      "HelloWorldMidi.cmajorpatch"
+    ]
+  },
+  {
+    "id": "cmajor-midiecho",
+    "name": "MidiEcho",
+    "directory": "MidiEcho",
+    "manifest": "MidiEcho.cmajorpatch",
+    "files": [
+      "MidiEcho.cmajor",
+      "MidiEcho.cmajorpatch"
+    ]
+  },
+  {
+    "id": "cmajor-patchworker",
+    "name": "Hello World with PatchWorker",
+    "directory": "PatchWorker",
+    "manifest": "PatchWorker.cmajorpatch",
+    "files": [
+      "PatchWorker.cmajor",
+      "PatchWorker.cmajorpatch",
+      "resources/piano_72.ogg",
+      "worker.js"
+    ]
+  },
+  {
+    "id": "cmajor-piano",
+    "name": "Piano",
+    "directory": "Piano",
+    "manifest": "Piano.cmajorpatch",
+    "files": [
+      "Piano.cmajor",
+      "Piano.cmajorpatch",
+      "piano_36.ogg",
+      "piano_48.ogg",
+      "piano_60.ogg",
+      "piano_72.ogg",
+      "piano_84.ogg"
+    ]
+  },
+  {
+    "id": "cmajor-pitchdetector",
+    "name": "Pitch Detector",
+    "directory": "PitchDetector",
+    "manifest": "PitchDetector.cmajorpatch",
+    "files": [
+      "PitchDetector.cmajor",
+      "PitchDetector.cmajorpatch",
+      "ui/index.js"
+    ]
+  },
+  {
+    "id": "cmajor-pro54",
+    "name": "Pro54",
+    "directory": "Pro54",
+    "manifest": "Pro54.cmajorpatch",
+    "files": [
+      "Pro54.cmajor",
+      "Pro54.cmajorpatch",
+      "README.md",
+      "gui/assets/BPF.png",
+      "gui/assets/background.png",
+      "gui/assets/button_black.png",
+      "gui/assets/button_grey.png",
+      "gui/assets/button_orange.png",
+      "gui/assets/filter.png",
+      "gui/assets/knob_black.png",
+      "gui/assets/knob_metal.png",
+      "gui/assets/led.png",
+      "gui/assets/midi_blink.png",
+      "gui/assets/program7seg.png",
+      "gui/assets/voices.png",
+      "gui/assets/wheel.png",
+      "gui/controllers/controllerMapping.js",
+      "gui/helpers/cmaj-image-strip-control.js",
+      "gui/index.js",
+      "gui/presets/presetBank.js",
+      "icon.png",
+      "thumbnail.png",
+      "worker/worker.js"
+    ]
+  },
+  {
+    "id": "cmajor-ringmod",
+    "name": "Ring Mod Demo",
+    "directory": "RingMod",
+    "manifest": "RingMod.cmajorpatch",
+    "files": [
+      "README.md",
+      "RingMod.cmajor",
+      "RingMod.cmajorpatch",
+      "RingMod_GUI.js",
+      "blockDiagram.png",
+      "exterminate.ogg",
+      "good_dalek.ogg"
+    ]
+  },
+  {
+    "id": "cmajor-sinesynth",
+    "name": "SineSynth",
+    "directory": "SineSynth",
+    "manifest": "SineSynth.cmajorpatch",
+    "files": [
+      "SineSynth.cmajor",
+      "SineSynth.cmajorpatch"
+    ]
+  },
+  {
+    "id": "cmajor-stereodelay",
+    "name": "Stereo Delay",
+    "directory": "StereoDelay",
+    "manifest": "StereoDelay.cmajorpatch",
+    "files": [
+      "StereoDelay.cmajor",
+      "StereoDelay.cmajorpatch"
+    ]
+  },
+  {
+    "id": "cmajor-subtractone",
+    "name": "SubtractOne",
+    "directory": "SubtractOne",
+    "manifest": "SubtractOne.cmajorpatch",
+    "files": [
+      "SubtractOne.cmajor",
+      "SubtractOne.cmajorpatch",
+      "gui/.gitignore",
+      "gui/README.md",
+      "gui/package.json",
+      "gui/public/images/facebook.svg",
+      "gui/public/images/favicon-16x16.png",
+      "gui/public/images/favicon-32x32.png",
+      "gui/public/images/favicon.ico",
+      "gui/public/images/keyboard.png",
+      "gui/public/images/knobs.png",
+      "gui/public/images/logo.svg",
+      "gui/public/images/midi-keyboard.png",
+      "gui/public/images/presets.png",
+      "gui/public/images/twitter-preview.png",
+      "gui/public/images/twitter.svg",
+      "gui/public/images/wood-1.jpg",
+      "gui/public/images/wood-2.jpg",
+      "gui/public/images/x.svg",
+      "gui/public/index.html",
+      "gui/public/sounds/button.mp3",
+      "gui/public/sounds/switch.mp3",
+      "gui/public/wasm/SubtractOneWorklet.js",
+      "gui/src/App.js",
+      "gui/src/App.test.js",
+      "gui/src/actions/actions.js",
+      "gui/src/components/Base.js",
+      "gui/src/components/BottomBar.js",
+      "gui/src/components/Controls.js",
+      "gui/src/components/FaderControl.js",
+      "gui/src/components/KnobControl.js",
+      "gui/src/components/Label.js",
+      "gui/src/components/Onboarding/AnimatedText.js",
+      "gui/src/components/Onboarding/ControlBar.js",
+      "gui/src/components/Onboarding/Onboarding.js",
+      "gui/src/components/Onboarding/Tooltip.js",
+      "gui/src/components/Oscilloscope.js",
+      "gui/src/components/PowerSwitch.js",
+      "gui/src/components/PresetButton.js",
+      "gui/src/components/PresetManager.js",
+      "gui/src/components/Sequencer.js",
+      "gui/src/components/ShareModal.js",
+      "gui/src/components/WaveformSelector.js",
+      "gui/src/components/gesture-helper.js",
+      "gui/src/environments/cmaj-patch-environment.js",
+      "gui/src/environments/cmaj-patch-utils.js",
+      "gui/src/environments/cmaj-wasm-audio-worklet-environment.js",
+      "gui/src/environments/midi-input-utils.js",
+      "gui/src/environments/native-web-audio-environment.js",
+      "gui/src/fonts/Syne-Bold.woff",
+      "gui/src/fonts/arimo/P5sMzZCDf9_T_10UxCFuj5-v6dg.woff2",
+      "gui/src/fonts/arimo/P5sMzZCDf9_T_10VxCFuj5-v6dg.woff2",
+      "gui/src/fonts/arimo/P5sMzZCDf9_T_10WxCFuj5-v6dg.woff2",
+      "gui/src/fonts/arimo/P5sMzZCDf9_T_10XxCFuj5-v6dg.woff2",
+      "gui/src/fonts/arimo/P5sMzZCDf9_T_10ZxCFuj5-v.woff2",
+      "gui/src/fonts/arimo/P5sMzZCDf9_T_10axCFuj5-v6dg.woff2",
+      "gui/src/fonts/arimo/P5sMzZCDf9_T_10bxCFuj5-v6dg.woff2",
+      "gui/src/fonts/arimo/P5sMzZCDf9_T_10dxCFuj5-v6dg.woff2",
+      "gui/src/fonts/arimo/arimo.css",
+      "gui/src/index.css",
+      "gui/src/index.js",
+      "gui/src/localStorage.js",
+      "gui/src/presets.js",
+      "gui/src/reducers/reducers.js",
+      "gui/src/store/index.js",
+      "gui/stripped-build/images/facebook.svg",
+      "gui/stripped-build/images/favicon-16x16.png",
+      "gui/stripped-build/images/favicon-32x32.png",
+      "gui/stripped-build/images/favicon.ico",
+      "gui/stripped-build/images/keyboard.png",
+      "gui/stripped-build/images/knobs.png",
+      "gui/stripped-build/images/logo.svg",
+      "gui/stripped-build/images/midi-keyboard.png",
+      "gui/stripped-build/images/presets.png",
+      "gui/stripped-build/images/twitter-preview.png",
+      "gui/stripped-build/images/twitter.svg",
+      "gui/stripped-build/images/wood-1.jpg",
+      "gui/stripped-build/images/wood-2.jpg",
+      "gui/stripped-build/images/x.svg",
+      "gui/stripped-build/index.html",
+      "gui/stripped-build/index.js",
+      "gui/stripped-build/static/css/main.a3473d71.css",
+      "gui/stripped-build/static/js/main.62462333.js",
+      "gui/stripped-build/static/js/main.62462333.js.LICENSE.txt",
+      "gui/stripped-build/static/media/P5sMzZCDf9_T_10UxCFuj5-v6dg.53583fe6e9e2e5b8c66e.woff2",
+      "gui/stripped-build/static/media/P5sMzZCDf9_T_10VxCFuj5-v6dg.4473ecd0a0b773933553.woff2",
+      "gui/stripped-build/static/media/P5sMzZCDf9_T_10WxCFuj5-v6dg.0f9c796637424dcc93de.woff2",
+      "gui/stripped-build/static/media/P5sMzZCDf9_T_10XxCFuj5-v6dg.9412ea211130ade2e55c.woff2",
+      "gui/stripped-build/static/media/P5sMzZCDf9_T_10ZxCFuj5-v.af99bbe483be9cef4824.woff2",
+      "gui/stripped-build/static/media/P5sMzZCDf9_T_10axCFuj5-v6dg.3da9eb7138433db3b882.woff2",
+      "gui/stripped-build/static/media/P5sMzZCDf9_T_10bxCFuj5-v6dg.346f2a5db1314ce33bea.woff2",
+      "gui/stripped-build/static/media/P5sMzZCDf9_T_10dxCFuj5-v6dg.21be06171f7185794c4b.woff2",
+      "gui/stripped-build/static/media/Syne-Bold.8bdf52aa76a4f6d135cc.woff"
+    ]
+  },
+  {
+    "id": "cmajor-tx81z",
+    "name": "TX81Z",
+    "directory": "TX81Z",
+    "manifest": "TX81Z.cmajorpatch",
+    "files": [
+      "TX81Z.cmajor",
+      "TX81Z.cmajorpatch"
+    ]
+  },
+  {
+    "id": "cmajor-timelinetester",
+    "name": "TimelineTester",
+    "directory": "TimelineTester",
+    "manifest": "TimelineTester.cmajorpatch",
+    "files": [
+      "TimelineTester.cmajor",
+      "TimelineTester.cmajorpatch",
+      "Timeline_UI.js"
+    ]
+  },
+  {
+    "id": "cmajor-tremolo",
+    "name": "Tremolo",
+    "directory": "Tremolo",
+    "manifest": "Tremolo.cmajorpatch",
+    "files": [
+      "Tremolo.cmajor",
+      "Tremolo.cmajorpatch",
+      "ui/index.js",
+      "ui/stompbox/big-knob-flat.svg",
+      "ui/stompbox/button.svg",
+      "ui/stompbox/enclosure.svg",
+      "ui/stompbox/logo.js",
+      "ui/stompbox/smaller-knob-flat.svg",
+      "ui/stompbox/view.js"
+    ]
+  },
+  {
+    "id": "cmajor-valueecho",
+    "name": "Value",
+    "directory": "ValueEcho",
+    "manifest": "ValueEcho.cmajorpatch",
+    "files": [
+      "ValueEcho.cmajor",
+      "ValueEcho.cmajorpatch"
+    ]
+  },
+  {
+    "id": "cmajor-zitareverb",
+    "name": "Zita Reverb",
+    "directory": "ZitaReverb",
+    "manifest": "ZitaReverb.cmajorpatch",
+    "files": [
+      "README.md",
+      "ZitaReverb.cmajor",
+      "ZitaReverb.cmajorpatch"
+    ]
+  }
+]

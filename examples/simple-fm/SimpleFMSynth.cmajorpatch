@@ -1,0 +1,11 @@
+{
+    "CmajorVersion": 1,
+    "ID": "dev.cmajor.web.simple-fm",
+    "version": "1.0",
+    "name": "Simple FM Synth",
+    "description": "A small polyphonic FM synth for testing GitHub project import",
+    "manufacturer": "Charlie Culbert",
+    "category": "generator",
+    "isInstrument": true,
+    "source": "SimpleFMSynth.cmajor"
+}

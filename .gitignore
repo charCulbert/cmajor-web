@@ -1,0 +1,6 @@
+/node_modules/
+/dist/
+/.amp/
+/docs/
+.DS_Store
+*.log
