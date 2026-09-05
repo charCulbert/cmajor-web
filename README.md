@@ -16,6 +16,7 @@ Loading and editing cmajor patches on the web, compiling them with the cmajor co
 
 The repository includes a small polyphonic FM synth:
 
+- [Open the FM synth in Cmajor Web](https://charculbert.github.io/cmajor-web/#github=charCulbert%2Fcmajor-web&ref=main&path=examples%2Fsimple-fm)
 - [Project folder](https://github.com/charCulbert/cmajor-web/tree/main/examples/simple-fm)
 - [Patch manifest](https://github.com/charCulbert/cmajor-web/blob/main/examples/simple-fm/SimpleFMSynth.cmajorpatch)
 
