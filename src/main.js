@@ -99,7 +99,7 @@ const preferences = {
   scopeTriggerLevel: 0,
   scopeTriggerPosition: 0.25,
   scopeOffset: 0,
-  scopePersistence: 0.5,
+  scopePersistence: 0.05,
   midiRoot: 48,
   explorerWidth: 165,
   explorerHeight: 99,
@@ -256,7 +256,7 @@ document.querySelector("#app").innerHTML = `
               </select>
             </label>
             <label>Offset <compost-number-box id="scope-offset" min="-1" max="1" step="0.01" reset-value="0" display-fraction-digits="2" aria-label="Scope vertical offset"></compost-number-box></label>
-            <label>Persist <compost-number-box id="scope-persistence" min="0" max="1" step="0.001" value="${preferences.scopePersistence}" reset-value="0.5" display-fraction-digits="3" unit="s" aria-label="Scope persistence"></compost-number-box></label>
+            <label>Persist <compost-number-box id="scope-persistence" min="0" max="1" step="0.001" value="${preferences.scopePersistence}" reset-value="0.05" display-fraction-digits="3" unit="s" aria-label="Scope persistence"></compost-number-box></label>
             <button id="scope-freeze" type="button" aria-pressed="false">Freeze</button>
                 </div>
               </div>
