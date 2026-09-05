@@ -1,11 +1,10 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, cpSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
 const revision = "4ba0924f3933d9650fb6a8f01f652a7236344604";
 const checkout = mkdtempSync(path.join(tmpdir(), "cmajor-examples-"));
-const output = path.resolve("public/cmajor-examples");
 const catalogPath = path.resolve("src/generated/cmajor-example-catalog.json");
 
 try {
@@ -15,9 +14,6 @@ try {
   execFileSync("git", ["-C", checkout, "checkout", "--quiet", "--detach", "FETCH_HEAD"]);
 
   const source = path.join(checkout, "examples/patches");
-  rmSync(output, { recursive: true, force: true });
-  cpSync(source, output, { recursive: true });
-
   const manifests = [];
   const walk = (directory) => {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -52,7 +48,7 @@ try {
     };
   });
   writeFileSync(catalogPath, `${JSON.stringify(catalog, null, 2)}\n`);
-  console.log(`Synced ${catalog.length} Cmajor projects from ${revision}.`);
+  console.log(`Synced the catalog for ${catalog.length} Cmajor projects from ${revision}.`);
 } finally {
   rmSync(checkout, { recursive: true, force: true });
 }

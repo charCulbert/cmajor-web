@@ -10,7 +10,7 @@ Loading and editing cmajor patches on the web, compiling them with the cmajor co
 - Sample-accurate MIDI delivery through `SharedArrayBuffer` when cross-origin isolation is available
 - Project explorer, local-folder import, draft recovery, and compressed share links
 - Direct loading from public GitHub repositories
-- Succesfully loads ll the Cmajor example projects, including their custom UIs
+- Loads all Cmajor example projects, including their custom UIs, directly from a pinned upstream revision
 
 ## GitHub example
 
@@ -22,6 +22,6 @@ The repository includes a small polyphonic FM synth:
 
 ## Compiler and license
 
-The browser API binaries are Cmajor 1.0.3178 from [`cmajor-lang/docs` at `bf391fe`](https://github.com/cmajor-lang/docs/commit/bf391feddbf652835ad52c2514af7c8e0e5d4a6a). Matching source and bundled examples are pinned to [`cmajor-lang/cmajor` at `4ba0924`](https://github.com/cmajor-lang/cmajor/commit/4ba0924f3933d9650fb6a8f01f652a7236344604). Rebuild them with upstream `tools/wasm_compiler/build.py`, targeting `public/cmaj_api` and version `1.0.3178`.
+The browser API binaries are Cmajor 1.0.3178 from [`cmajor-lang/docs` at `bf391fe`](https://github.com/cmajor-lang/docs/commit/bf391feddbf652835ad52c2514af7c8e0e5d4a6a). Matching source and official examples are pinned to [`cmajor-lang/cmajor` at `4ba0924`](https://github.com/cmajor-lang/cmajor/commit/4ba0924f3933d9650fb6a8f01f652a7236344604). Rebuild the compiler with upstream `tools/wasm_compiler/build.py`, targeting `public/cmaj_api` and version `1.0.3178`.
 
-GPL-3.0-or-later. See [COPYING](COPYING) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Copyright © 2026 Charlie Culbert. Licensed under GPL-3.0-or-later. See [COPYING](COPYING) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
