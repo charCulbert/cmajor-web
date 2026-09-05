@@ -1,35 +1,16 @@
 # Cmajor Web
 
-A simple, serverless Cmajor playground. Edit a patch, compile it in the browser, play it through AudioWorklet, and share it with a URL.
-
-## Run
-
-Requires Node.js 20.19 or newer.
-
-```sh
-npm install
-npm run dev
-```
-
-Open <http://localhost:5173>.
-
-```sh
-npm test          # tests
-npm run build     # production build
-npm run preview   # preview the build
-```
+Loading and editing cmajor patches on the web, compiling them with the cmajor compiler directly on the web.
 
 ## Features
 
 - CodeMirror editor with Cmajor highlighting, diagnostics, completion, and optional Vim mode
-- Real Cmajor WebAssembly compiler running in a Worker
+- Cmajor wasm compiler running in a Worker
 - AudioWorklet playback, parameters, MIDI, audio inputs, meters, and scope
-- Sample-accurate MIDI through `SharedArrayBuffer` where cross-origin isolation is available
+- Sample-accurate MIDI delivery through `SharedArrayBuffer` when cross-origin isolation is available
 - Project explorer, local-folder import, draft recovery, and compressed share links
-- Direct loading from public GitHub repositories and `.cmajorpatch` links
-- All 27 official Cmajor example projects, including their custom UIs
-
-There is no browser-ready Cmajor language server, so the editor provides lightweight completion plus diagnostics from the real compiler rather than claiming LSP support.
+- Direct loading from public GitHub repositories
+- Succesfully loads ll the Cmajor example projects, including their custom UIs
 
 ## GitHub example
 
@@ -38,8 +19,6 @@ The repository includes a small polyphonic FM synth:
 - [Project folder](https://github.com/charCulbert/cmajor-web/tree/main/examples/simple-fm)
 - [Patch manifest](https://github.com/charCulbert/cmajor-web/blob/main/examples/simple-fm/SimpleFMSynth.cmajorpatch)
 - [Open from a local playground](http://localhost:5173/#github=charCulbert%2Fcmajor-web&ref=main&path=examples%2Fsimple-fm&manifest=examples%2Fsimple-fm%2FSimpleFMSynth.cmajorpatch)
-
-GitHub imports are anonymous and therefore require a public repository. They never start audio automatically.
 
 ## Compiler and license
 
