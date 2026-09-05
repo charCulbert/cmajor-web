@@ -11,7 +11,6 @@ The Cmajor compiler files in `public/cmaj_api/` are distributed under Cmajor's G
 
 The Cmajor browser helper files retain their individual upstream ISC or GPL notices. Local modifications are provided in this repository under GPL-3.0-or-later without removing those existing permissions or notices.
 
-Official Cmajor example projects are not copied into this repository. The application downloads a selected example directly from the pinned Cmajor source revision above. “Sine tone” is adapted from the Cmajor Getting Started guide. “Gran Vals melody” is adapted from Cmajor's `examples/patches/HelloWorld`, whose melody is attributed upstream to Francisco Tárrega.
 
 ## MIT-licensed components
 
