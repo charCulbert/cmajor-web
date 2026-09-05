@@ -27,10 +27,11 @@ import { createMeterChannel, setChannelMinMax } from "./metering.js";
 import { decodeProject, encodeProject, MAX_SOURCE_BYTES } from "./share.js";
 import "./style.css";
 
-const audioHelperURL = new URL("/cmaj_api/cmaj-audio-worklet-helper.js", window.location.href).href;
+const appBaseURL = new URL(import.meta.env.BASE_URL, window.location.origin);
+const audioHelperURL = new URL("cmaj_api/cmaj-audio-worklet-helper.js", appBaseURL).href;
 const { AudioWorkletPatchConnection } = await import(/* @vite-ignore */ audioHelperURL);
 const projectFileService = "serviceWorker" in navigator
-  ? navigator.serviceWorker.register("/project-files-sw.js").then(() => navigator.serviceWorker.ready).catch(() => null)
+  ? navigator.serviceWorker.register(new URL("project-files-sw.js", appBaseURL), { scope: appBaseURL.pathname }).then(() => navigator.serviceWorker.ready).catch(() => null)
   : Promise.resolve(null);
 
 const DRAFT_KEY = "cmajor-web:draft:v1";
@@ -2597,7 +2598,7 @@ async function publishProjectFiles(entries) {
       if (request.url.startsWith(projectResourceRoot)) await cache.delete(request);
     }
   }
-  const root = new URL(`/__cmajor_project__/${crypto.randomUUID()}/`, location.origin);
+  const root = new URL(`__cmajor_project__/${crypto.randomUUID()}/`, appBaseURL);
   const contentType = (path) => ({
     ".js": "text/javascript",
     ".mjs": "text/javascript",

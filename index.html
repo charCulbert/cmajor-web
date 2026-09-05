@@ -13,6 +13,26 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400&family=Schibsted+Grotesk:wght@300;400;500&display=swap" rel="stylesheet" />
+    <script>
+      if ("serviceWorker" in navigator && !window.crossOriginIsolated) {
+        const workerURL = new URL("project-files-sw.js", document.baseURI);
+        let reloading = false;
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          if (!reloading) {
+            reloading = true;
+            location.reload();
+          }
+        });
+        navigator.serviceWorker.register(workerURL, { scope: new URL(".", workerURL).pathname }).then((registration) => {
+          if (navigator.serviceWorker.controller && !sessionStorage.getItem("cmajor-web:coi-reload")) {
+            sessionStorage.setItem("cmajor-web:coi-reload", "1");
+            registration.update().finally(() => location.reload());
+          }
+        }).catch(() => {});
+      } else {
+        sessionStorage.removeItem("cmajor-web:coi-reload");
+      }
+    </script>
     <title>Cmajor Web Playground</title>
   </head>
   <body>

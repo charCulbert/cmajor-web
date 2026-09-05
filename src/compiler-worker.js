@@ -1,6 +1,6 @@
 // Upstream's general adapter imports DOM playback helpers at module scope. This
 // worker-only copy removes that playback method but keeps the compiler API intact.
-const compilerModuleURL = new URL("/cmaj_api/cmaj-embedded-compiler-worker.js", self.location.href).href;
+const compilerModuleURL = new URL("../cmaj_api/cmaj-embedded-compiler-worker.js", self.location.href).href;
 const compilerModule = import(/* @vite-ignore */ compilerModuleURL);
 let requestQueue = Promise.resolve();
 
