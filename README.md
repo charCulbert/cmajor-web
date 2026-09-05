@@ -18,7 +18,6 @@ The repository includes a small polyphonic FM synth:
 
 - [Project folder](https://github.com/charCulbert/cmajor-web/tree/main/examples/simple-fm)
 - [Patch manifest](https://github.com/charCulbert/cmajor-web/blob/main/examples/simple-fm/SimpleFMSynth.cmajorpatch)
-- [Open from a local playground](http://localhost:5173/#github=charCulbert%2Fcmajor-web&ref=main&path=examples%2Fsimple-fm&manifest=examples%2Fsimple-fm%2FSimpleFMSynth.cmajorpatch)
 
 ## Compiler and license
 
