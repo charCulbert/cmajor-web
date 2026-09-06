@@ -7,5 +7,11 @@
     "manufacturer": "Charlie Culbert",
     "category": "generator",
     "isInstrument": true,
-    "source": "SimpleFMSynth.cmajor"
+    "source": "SimpleFMSynth.cmajor",
+    "view": {
+        "src": "SimpleFMSynthView.js",
+        "width": 640,
+        "height": 400,
+        "resizable": true
+    }
 }
