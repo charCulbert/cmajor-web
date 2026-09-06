@@ -15,67 +15,54 @@ class SimpleFMSynthView extends HTMLElement
             <style>
                 :host {
                     display: block;
-                    width: 640px;
-                    height: 400px;
-                    color: #f3f5ef;
-                    background: #0d1110;
-                    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+                    width: 560px;
+                    height: 300px;
+                    color: var(--ink, #eeeeea);
+                    background: var(--panel, #121414);
+                    font-family: var(--ui, ui-sans-serif, system-ui, sans-serif);
                 }
                 * { box-sizing: border-box; }
                 main {
-                    position: relative;
                     height: 100%;
                     overflow: hidden;
-                    padding: 34px 38px;
-                    background:
-                        linear-gradient(115deg, rgba(84, 255, 179, 0.09), transparent 42%),
-                        radial-gradient(circle at 88% 12%, rgba(109, 181, 255, 0.15), transparent 35%),
-                        #0d1110;
+                    padding: 24px;
+                    background: var(--panel, #121414);
                 }
-                header { display: flex; align-items: end; justify-content: space-between; margin-bottom: 30px; }
-                h1 { margin: 0; font-size: 34px; font-weight: 500; letter-spacing: -1.4px; }
-                header span { color: #7f9189; font: 11px ui-monospace, monospace; letter-spacing: 0.18em; text-transform: uppercase; }
-                .wave {
-                    position: absolute;
-                    top: 28px;
-                    right: 38px;
-                    width: 160px;
-                    height: 42px;
-                    opacity: 0.55;
+                header {
+                    display: flex;
+                    align-items: baseline;
+                    justify-content: space-between;
+                    margin-bottom: 10px;
+                    padding-bottom: 14px;
+                    border-bottom: 1px solid var(--rule, #303434);
                 }
-                .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+                h1 { margin: 0; font-size: 18px; font-weight: 500; letter-spacing: -0.02em; }
+                header span { color: var(--faint, #7f8985); font: 11px var(--mono, ui-monospace, monospace); }
+                .controls { display: grid; }
                 label {
                     display: grid;
-                    grid-template-columns: 1fr auto;
-                    gap: 18px 12px;
+                    grid-template-columns: 7rem minmax(0, 1fr) 4.5rem;
+                    gap: 14px;
                     align-items: center;
-                    min-width: 0;
-                    padding: 20px;
-                    border: 1px solid #27332f;
-                    background: rgba(10, 14, 13, 0.76);
+                    min-height: 48px;
+                    border-bottom: 1px solid var(--rule-faint, #242727);
                 }
-                .name { color: #b7c4be; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }
-                output { color: #77f7b8; font: 18px ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+                .name { color: var(--ink2, #bdc5c1); font-size: 12px; }
+                output { color: var(--val, #9ac7ff); font: 12px var(--mono, ui-monospace, monospace); font-variant-numeric: tabular-nums; text-align: right; }
                 input {
-                    grid-column: 1 / -1;
                     width: 100%;
-                    height: 20px;
+                    height: 18px;
                     margin: 0;
-                    accent-color: #68eaaa;
+                    accent-color: var(--sel, #72d6a1);
                     cursor: ew-resize;
                 }
-                footer { margin-top: 24px; color: #718078; font: 11px ui-monospace, monospace; letter-spacing: 0.08em; }
             </style>
             <main>
                 <header>
                     <h1>Simple FM</h1>
-                    <span>8 voice poly synth</span>
+                    <span>8 voices · MIDI</span>
                 </header>
-                <svg class="wave" viewBox="0 0 160 42" aria-hidden="true">
-                    <path d="M0 21 C10 2 20 2 30 21 S50 40 60 21 S80 2 90 21 S110 40 120 21 S140 2 160 21" fill="none" stroke="#78f0b5" stroke-width="2"/>
-                </svg>
                 <section class="controls"></section>
-                <footer>PLAY FROM MIDI OR THE ON-SCREEN KEYBOARD</footer>
             </main>`;
 
         const controls = this.shadowRoot.querySelector (".controls");

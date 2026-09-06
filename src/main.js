@@ -193,7 +193,7 @@ document.querySelector("#app").innerHTML = `
       </section>
       <section id="midi-input" class="midi-input tool-launcher" aria-label="MIDI input" hidden>
         <compost-piano id="docked-midi-piano" root-note="48" note-count="13" inline aria-label="Compact MIDI keyboard"></compost-piano>
-        <div class="midi-tools"><compost-midi id="midi-device" input-only aria-label="Hardware MIDI input"></compost-midi><button id="open-keyboard" type="button" aria-controls="keyboard-window">Open keyboard</button></div>
+        <div class="midi-tools"><compost-midi id="midi-device" input-only aria-label="Hardware MIDI input"></compost-midi><button id="open-keyboard" type="button" aria-controls="keyboard-window" aria-label="Open MIDI keyboard" title="Open MIDI keyboard">↗</button></div>
       </section>
       <section class="patch-controls" aria-label="Plugin controls">
         <button id="open-plugin" type="button" aria-controls="patch-window" disabled>Open plugin</button>
@@ -273,7 +273,7 @@ document.querySelector("#app").innerHTML = `
     </aside>
   </main>
   <compost-window id="patch-window" heading="Patch UI" x="24" y="24">
-    <div slot="controls" class="patch-window-tabs" role="tablist" aria-label="Floating patch view"><button id="floating-ui-tab" type="button" role="tab" aria-selected="true">UI</button><button id="floating-params-tab" type="button" role="tab" aria-selected="false">Params</button></div>
+    <div slot="controls" class="patch-window-tabs"><button id="floating-view-toggle" type="button" aria-pressed="false" aria-label="Show parameters" title="Show parameters"><span>UI</span><span>Params</span></button></div>
     <div id="floating-view" class="patch-view-host"></div>
   </compost-window>
   <compost-window id="keyboard-window" heading="Keyboard" x="230" y="560" width="560" height="120" min-width="200" min-height="90" resizable="none">
@@ -308,7 +308,7 @@ document.querySelector("#app").innerHTML = `
 
 const elements = Object.fromEntries([
   "main-layout", "preview-resizer", "examples", "build", "stop", "volume", "volume-value", "share", "theme", "more", "file-actions", "download", "import", "import-project", "open-github", "file-input", "project-input", "github-dialog", "github-dialog-title", "github-location-fields", "github-location", "github-manifest-fields", "github-manifest", "github-confirm",
-  "vim", "auto-check", "new-file", "new-folder", "active-file-name", "file-tree", "explorer-context-menu", "explorer-resizer", "cursor-position", "check-state", "draft-state", "patch-name", "audio-state", "attribution", "audio-input", "audio-source", "audio-input-channels", "impulse-controls", "fire-impulse", "synth-controls", "synth-waveform", "synth-piano", "device-controls", "audio-device", "enable-audio-input", "wav-controls", "wav-input", "play-wav", "stop-wav", "loop-wav", "input-status", "midi-input", "docked-midi-piano", "midi-device", "open-keyboard", "keyboard-window", "floating-keyboard", "midi-piano", "midi-octave-down", "midi-octave-up", "midi-octave-label", "open-plugin", "patch-window", "floating-ui-tab", "floating-params-tab", "floating-view", "parameters-home", "parameters", "float-meter", "docked-meter", "meter-panel", "meter-placeholder", "meter-window", "floating-meter", "meter", "cpu-meter", "cpu-level", "cpu-bar", "float-scope", "docked-scope", "scope-panel", "scope-placeholder", "scope-window", "floating-scope", "scope", "scope-settings-toggle", "scope-settings-menu", "scope-trigger", "scope-trigger-level", "scope-trigger-position", "scope-size", "scope-range", "scope-offset", "scope-persistence", "scope-persistence-canvas", "scope-freeze", "scope-duration", "compiler-version", "diagnostic-output", "toast",
+  "vim", "auto-check", "new-file", "new-folder", "active-file-name", "file-tree", "explorer-context-menu", "explorer-resizer", "cursor-position", "check-state", "draft-state", "patch-name", "audio-state", "attribution", "audio-input", "audio-source", "audio-input-channels", "impulse-controls", "fire-impulse", "synth-controls", "synth-waveform", "synth-piano", "device-controls", "audio-device", "enable-audio-input", "wav-controls", "wav-input", "play-wav", "stop-wav", "loop-wav", "input-status", "midi-input", "docked-midi-piano", "midi-device", "open-keyboard", "keyboard-window", "floating-keyboard", "midi-piano", "midi-octave-down", "midi-octave-up", "midi-octave-label", "open-plugin", "patch-window", "floating-view-toggle", "floating-view", "parameters-home", "parameters", "float-meter", "docked-meter", "meter-panel", "meter-placeholder", "meter-window", "floating-meter", "meter", "cpu-meter", "cpu-level", "cpu-bar", "float-scope", "docked-scope", "scope-panel", "scope-placeholder", "scope-window", "floating-scope", "scope", "scope-settings-toggle", "scope-settings-menu", "scope-trigger", "scope-trigger-level", "scope-trigger-position", "scope-size", "scope-range", "scope-offset", "scope-persistence", "scope-persistence-canvas", "scope-freeze", "scope-duration", "compiler-version", "diagnostic-output", "toast",
 ].map((id) => [id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()), document.getElementById(id)]));
 
 elements.scopeSize.value = String(preferences.scopeSize);
@@ -601,8 +601,9 @@ elements.openPlugin.addEventListener("click", () => {
   if (elements.floatingView.querySelector(".patch-view-frame")) openFloatingPatchView();
   else openFloatingParameters();
 });
-elements.floatingUiTab.addEventListener("click", () => showFloatingPatchTab("ui"));
-elements.floatingParamsTab.addEventListener("click", () => showFloatingPatchTab("params"));
+elements.floatingViewToggle.addEventListener("click", () => {
+  showFloatingPatchTab(elements.floatingViewToggle.getAttribute("aria-pressed") === "true" ? "ui" : "params");
+});
 elements.patchWindow.addEventListener("window-close", () => {
   dockParameters();
   elements.openPlugin.disabled = !activeConnection;
@@ -919,9 +920,10 @@ function showFloatingPatchTab(tab) {
     const rows = Math.max(1, Math.ceil(elements.parameters.querySelectorAll("compost-knob").length / columns));
     elements.patchWindow.setContentSize(width, Math.min(520, innerHeight - 100, Math.max(140, rows * 126 + 14)));
   }
-  elements.floatingUiTab.setAttribute("aria-selected", String(showUI));
-  elements.floatingParamsTab.setAttribute("aria-selected", String(!showUI));
-  elements.floatingUiTab.hidden = !frame;
+  elements.floatingViewToggle.setAttribute("aria-pressed", String(!showUI));
+  elements.floatingViewToggle.setAttribute("aria-label", showUI ? "Show parameters" : "Show custom UI");
+  elements.floatingViewToggle.title = showUI ? "Show parameters" : "Show custom UI";
+  elements.floatingViewToggle.hidden = !frame;
 }
 
 function dockParameters() {
@@ -1989,7 +1991,7 @@ function clearCustomView() {
   dockParameters();
   elements.patchWindow.open = false;
   elements.floatingView.replaceChildren();
-  elements.floatingUiTab.hidden = true;
+  elements.floatingViewToggle.hidden = true;
   elements.openPlugin.disabled = true;
 }
 

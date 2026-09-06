@@ -200,10 +200,10 @@ h1 { margin: 0; color: var(--ink); font-size: 1.455rem; font-weight: 400; letter
 .tool-launcher { display: grid; grid-template-columns: minmax(7rem, 1fr) minmax(9rem, 1fr); align-items: stretch; gap: 0.545rem; padding: 0.545rem 0.727rem; color: var(--dim); }
 .tool-launcher button, .meter-tool > button { border: 1px solid var(--ghost); border-radius: 0; font-size: 0.818rem; }
 #docked-midi-piano { width: 100%; --compost-piano-height: 5rem; color: var(--ink); }
-.midi-tools { display: grid; align-content: start; gap: 0.364rem; }
+.midi-tools { display: grid; grid-template-columns: minmax(0, 1fr) 2.5rem; align-content: start; gap: 0; }
 .midi-tools compost-midi { min-width: 0; --compost-midi-columns: 1fr; color: var(--ink2); }
 .midi-tools compost-midi::part(label), .midi-tools compost-midi::part(status) { display: none; }
-.midi-tools button { width: 100%; }
+.midi-tools button { width: 2.5rem; border-left: 1px solid var(--rule); border-radius: 0; padding: 0; color: var(--dim); }
 .input-source-header, .input-source-controls { display: flex; align-items: center; gap: 0.545rem; padding: 0.727rem; }
 .input-source-header { justify-content: space-between; border-bottom: 1px solid var(--rule); }
 .input-source-header label, .input-source-controls label { display: flex; align-items: center; gap: 0.545rem; color: var(--dim); }
@@ -231,8 +231,12 @@ compost-window {
 compost-window::part(close) { min-width: 2em; min-height: 100%; }
 #patch-window { --compost-window-control-min: 0px; }
 .patch-window-tabs { display: flex; height: 100%; align-items: stretch; align-self: stretch; gap: 0; }
-.patch-window-tabs button { min-width: 4.5rem; min-height: 0; border: 0; border-left: 1px solid var(--rule); border-radius: 0; padding: 0 0.545rem; }
-.patch-window-tabs button[aria-selected="true"] { border-color: var(--sel); color: var(--ink); }
+.patch-window-tabs button { position: relative; display: grid; min-width: 7.5rem; min-height: 0; grid-template-columns: 1fr 1fr; align-items: center; border: 0; border-left: 1px solid var(--rule); border-radius: 0; padding: 0; color: var(--dim); }
+.patch-window-tabs button::before { content: ""; position: absolute; inset: 3px 50% 3px 3px; z-index: 0; background: var(--ghost); transition: translate 120ms ease; }
+.patch-window-tabs button[aria-pressed="true"]::before { translate: calc(100% - 3px) 0; }
+.patch-window-tabs button span { position: relative; z-index: 1; padding: 0 0.455rem; font-size: 0.727rem; }
+.patch-window-tabs button[aria-pressed="false"] span:first-child,
+.patch-window-tabs button[aria-pressed="true"] span:last-child { color: var(--ink); }
 #floating-view { width: 100%; height: 100%; container-type: inline-size; }
 #floating-view > .parameters { width: 100%; min-height: 100%; overflow: auto; }
 .parameters {

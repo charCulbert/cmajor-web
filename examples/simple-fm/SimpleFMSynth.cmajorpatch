@@ -10,8 +10,8 @@
     "source": "SimpleFMSynth.cmajor",
     "view": {
         "src": "SimpleFMSynthView.js",
-        "width": 640,
-        "height": 400,
+        "width": 560,
+        "height": 300,
         "resizable": true
     }
 }
