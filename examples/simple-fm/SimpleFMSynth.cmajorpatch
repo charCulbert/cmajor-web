@@ -11,7 +11,7 @@
     "view": {
         "src": "SimpleFMSynthView.js",
         "width": 560,
-        "height": 300,
+        "height": 220,
         "resizable": true
     }
 }

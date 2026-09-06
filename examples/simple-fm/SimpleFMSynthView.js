@@ -16,7 +16,7 @@ class SimpleFMSynthView extends HTMLElement
                 :host {
                     display: block;
                     width: 560px;
-                    height: 300px;
+                    height: 220px;
                     color: var(--ink, #eeeeea);
                     background: var(--panel, #121414);
                     font-family: var(--ui, ui-sans-serif, system-ui, sans-serif);
@@ -25,43 +25,30 @@ class SimpleFMSynthView extends HTMLElement
                 main {
                     height: 100%;
                     overflow: hidden;
-                    padding: 24px;
+                    padding: 10px 18px;
                     background: var(--panel, #121414);
                 }
-                header {
-                    display: flex;
-                    align-items: baseline;
-                    justify-content: space-between;
-                    margin-bottom: 10px;
-                    padding-bottom: 14px;
-                    border-bottom: 1px solid var(--rule, #303434);
-                }
-                h1 { margin: 0; font-size: 18px; font-weight: 500; letter-spacing: -0.02em; }
-                header span { color: var(--faint, #7f8985); font: 11px var(--mono, ui-monospace, monospace); }
                 .controls { display: grid; }
                 label {
                     display: grid;
-                    grid-template-columns: 7rem minmax(0, 1fr) 4.5rem;
-                    gap: 14px;
+                    grid-template-columns: 1fr auto;
+                    gap: 2px 8px;
                     align-items: center;
-                    min-height: 48px;
+                    min-height: 50px;
                     border-bottom: 1px solid var(--rule-faint, #242727);
                 }
                 .name { color: var(--ink2, #bdc5c1); font-size: 12px; }
                 output { color: var(--val, #9ac7ff); font: 12px var(--mono, ui-monospace, monospace); font-variant-numeric: tabular-nums; text-align: right; }
                 input {
+                    grid-column: 1 / -1;
                     width: 100%;
-                    height: 18px;
+                    height: 16px;
                     margin: 0;
                     accent-color: var(--sel, #72d6a1);
                     cursor: ew-resize;
                 }
             </style>
             <main>
-                <header>
-                    <h1>Simple FM</h1>
-                    <span>8 voices · MIDI</span>
-                </header>
                 <section class="controls"></section>
             </main>`;
 
