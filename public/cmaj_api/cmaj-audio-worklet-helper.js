@@ -271,9 +271,10 @@ function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
                 const availableMilliseconds = blockSize * 1000 / this.workletSampleRate;
                 const end = this.cpuClock();
 
-                // A shared timer which did not advance was not scheduled concurrently
-                // with this callback, so it cannot provide a measurement for this block.
-                if (! this.cpuTimerView || (start > 0 && end > start))
+                // Quantised shared-clock reads may be equal for very short callbacks.
+                // Including those zero-length samples across many callbacks avoids
+                // biasing the average upward and lets lightweight patches report.
+                if (! this.cpuTimerView || (start > 0 && end >= start))
                 {
                     const proportionInBlock = (end - start) / availableMilliseconds;
                     this.cpuAverage += (proportionInBlock - this.cpuAverage) * 0.1;

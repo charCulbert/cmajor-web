@@ -26,7 +26,7 @@
     "@lezer/highlight": "^1.2.3",
     "@replit/codemirror-vim": "^6.2.1",
     "codemirror": "^6.0.2",
-    "compost": "github:charCulbert/compost#6633abbfb588bafb67361d0987b63b51b950d20d"
+    "compost": "github:charCulbert/compost#7a6d9d6e01ed621be1aa45372defa2564aae0c2e"
   },
   "devDependencies": {
     "vite": "^7.1.3"

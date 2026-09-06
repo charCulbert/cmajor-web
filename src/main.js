@@ -25,6 +25,7 @@ import {
   parseGitHubProject,
 } from "./github-project.js";
 import { createMeterChannel, setChannelMinMax } from "./metering.js";
+import { normaliseKeyboardRange } from "./midi-keyboard.js";
 import { allNotesOffMessages, DEFAULT_SEQUENCE_NOTES, packMIDI, sequenceEventsInWindow } from "./sequencer.js";
 import { decodeProject, encodeProject, MAX_SOURCE_BYTES } from "./share.js";
 import "./style.css";
@@ -102,12 +103,13 @@ const preferences = {
   volume: 0.7,
   scopeSize: 1024,
   scopeRange: 1,
-  scopeTrigger: "free",
+  scopeTrigger: "rising",
   scopeTriggerLevel: 0,
   scopeTriggerPosition: 0.25,
   scopeOffset: 0,
   scopePersistence: 0.05,
   midiRoot: 48,
+  midiCount: 37,
   sequencerBPM: 120,
   sequenceNotes: DEFAULT_SEQUENCE_NOTES,
   sequencerPatternVersion: 3,
@@ -118,7 +120,13 @@ const preferences = {
   ...loadJSON(PREFS_KEY, {}),
 };
 preferences.scopePersistence = Math.min(1, Math.max(0, Number(preferences.scopePersistence) || 0));
-preferences.midiRoot = Math.min(91, Math.max(0, Number(preferences.midiRoot) || 48));
+if (preferences.scopeDefaultsVersion !== 1) {
+  preferences.scopeSize = 1024;
+  preferences.scopeRange = 1;
+  preferences.scopeTrigger = "rising";
+  preferences.scopeDefaultsVersion = 1;
+}
+({ root: preferences.midiRoot, count: preferences.midiCount } = normaliseKeyboardRange(preferences.midiRoot, preferences.midiCount));
 preferences.sequencerBPM = Math.min(300, Math.max(20, Number(preferences.sequencerBPM) || 120));
 if (preferences.sequencerPatternVersion !== 3 || !Array.isArray(preferences.sequenceNotes)) {
   preferences.sequenceNotes = DEFAULT_SEQUENCE_NOTES.map((note) => ({ ...note }));
@@ -215,7 +223,10 @@ document.querySelector("#app").innerHTML = `
         <div id="input-status" class="input-status" role="status">Choose a source for this patch's audio input.</div>
       </section>
       <section id="midi-input" class="midi-input tool-launcher" aria-label="MIDI input" hidden>
-        <compost-piano id="docked-midi-piano" root-note="48" note-count="13" inline aria-label="Compact MIDI keyboard"></compost-piano>
+        <div class="docked-keyboard">
+          <compost-piano id="docked-midi-piano" root-note="48" note-count="25" inline aria-label="Compact MIDI keyboard"></compost-piano>
+          <button id="open-keyboard" type="button" aria-controls="keyboard-window" aria-label="Open MIDI keyboard" title="Open MIDI keyboard">↗</button>
+        </div>
         <div id="docked-sequencer" class="sequencer-host">
           <div id="sequencer-panel" class="sequencer-panel">
             <div class="sequencer-transport">
@@ -223,10 +234,10 @@ document.querySelector("#app").innerHTML = `
               <label><span>Sequence · BPM</span><compost-number-box id="sequencer-bpm" min="20" max="300" step="1" value="${preferences.sequencerBPM}" reset-value="120" display-fraction-digits="0" aria-label="Sequencer tempo"></compost-number-box></label>
               <button id="open-sequencer" type="button" aria-controls="sequencer-window" aria-label="Open note editor" title="Open note editor">↗</button>
             </div>
-            <compost-note-editor id="sequencer-editor" label="One-bar sequence" beats="4" start="0" end="4" loop loop-start="0" loop-end="4" lock-loop-start grid="1/16" root-note="36" note-count="37" fold readonly aria-label="One-bar MIDI sequence with bass"></compost-note-editor>
+            <compost-note-editor id="docked-sequencer-editor" label="One-bar sequence" beats="4" start="0" end="4" loop loop-start="0" loop-end="4" lock-loop-start grid="1/16" root-note="36" note-count="37" fold readonly aria-label="One-bar MIDI sequence with bass"></compost-note-editor>
           </div>
         </div>
-        <div class="midi-tools"><compost-midi id="midi-device" input-only aria-label="Hardware MIDI input"></compost-midi><button id="open-keyboard" type="button" aria-controls="keyboard-window" aria-label="Open MIDI keyboard" title="Open MIDI keyboard">↗</button></div>
+        <div class="midi-tools"><compost-midi id="midi-device" input-only aria-label="Hardware MIDI input"></compost-midi></div>
       </section>
       <section class="patch-controls" aria-label="Plugin controls">
         <button id="open-plugin" type="button" aria-controls="patch-window" disabled>Open plugin</button>
@@ -244,14 +255,53 @@ document.querySelector("#app").innerHTML = `
               </div>
             </div>
           </div>
-          <p id="meter-placeholder" class="tool-placeholder" hidden>Meters open in floating window.</p>
         </section>
         <section class="scope-card analysis-card" aria-label="Output oscilloscope">
           <div class="analysis-card-heading">
             <strong>Scope</strong><span id="scope-duration" class="visually-hidden"></span><button id="float-scope" type="button" aria-controls="scope-window" aria-label="Open output scope" title="Open output scope">↗</button>
           </div>
           <div id="docked-scope" class="scope-host">
-            <div id="scope-panel" class="scope-panel">
+            <div class="scope-panel">
+              <div class="scope-stage"><canvas id="docked-scope-persistence-canvas" aria-hidden="true"></canvas><compost-scope id="docked-scope-display" value-range="${preferences.scopeRange}" y-markers="0" aria-label="Compact live patch output waveform"></compost-scope></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </aside>
+  </main>
+  <compost-window id="patch-window" heading="Patch UI" x="24" y="24">
+    <div slot="controls" class="patch-window-tabs"><button id="floating-view-toggle" type="button" aria-pressed="false" aria-label="Show parameters" title="Show parameters"><span>UI</span><span>Params</span></button></div>
+    <div id="floating-view" class="patch-view-host"></div>
+  </compost-window>
+  <compost-window id="keyboard-window" heading="Keyboard" x="230" y="560" width="560" height="120" min-width="200" min-height="90" resizable="none">
+    <span slot="title" class="keyboard-title"><b>Keyboard</b><span id="midi-octave-label">C3 · 37 notes</span><button id="midi-octave-down" type="button" aria-label="Keyboard down one octave" title="Octave down (Z)">−12</button><button id="midi-octave-up" type="button" aria-label="Keyboard up one octave" title="Octave up (X)">+12</button></span>
+    <div id="floating-keyboard" class="floating-keyboard"><compost-piano id="midi-piano" root-note="${preferences.midiRoot}" note-count="${preferences.midiCount}" inline></compost-piano><div class="keyboard-grip left" aria-hidden="true"></div><div class="keyboard-grip right" aria-hidden="true"></div></div>
+  </compost-window>
+  <compost-window id="sequencer-window" heading="Sequencer" x="80" y="80" width="720" height="360" min-width="280" min-height="180">
+    <div id="floating-sequencer" class="sequencer-host">
+      <div class="sequencer-panel">
+        <div class="sequencer-transport">
+          <button id="floating-sequencer-play" type="button" aria-label="Play sequence" title="Play sequence">▶</button>
+          <label><span>Sequence · BPM</span><compost-number-box id="floating-sequencer-bpm" min="20" max="300" step="1" value="${preferences.sequencerBPM}" reset-value="120" display-fraction-digits="0" aria-label="Sequencer tempo"></compost-number-box></label>
+        </div>
+        <compost-note-editor id="sequencer-editor" label="One-bar sequence" beats="4" start="0" end="4" loop loop-start="0" loop-end="4" lock-loop-start grid="1/16" root-note="36" note-count="37" aria-label="One-bar MIDI sequence with bass"></compost-note-editor>
+      </div>
+    </div>
+  </compost-window>
+  <compost-window id="meter-window" heading="Output meters" x="48" y="48" width="180" height="300" min-width="100" min-height="120">
+    <div id="floating-meter" class="meter-host">
+      <div class="meter-card">
+        <compost-meter id="floating-meter-display" min="-90" max="6" curve="gain" aria-label="Floating stereo output level"></compost-meter>
+        <div id="floating-cpu-meter" class="cpu-meter" role="meter" aria-label="Cmajor DSP callback time" aria-valuemin="0" aria-valuemax="100">
+          <div><span>CPU</span><output id="floating-cpu-level">—</output></div>
+          <div class="cpu-track"><i id="floating-cpu-bar"></i></div>
+        </div>
+      </div>
+    </div>
+  </compost-window>
+  <compost-window id="scope-window" heading="Output scope" x="24" y="24" min-width="0" min-height="0">
+    <div id="floating-scope" class="scope-host">
+      <div id="scope-panel" class="scope-panel">
               <div class="scope-settings">
                 <button id="scope-settings-toggle" type="button" aria-expanded="false" aria-controls="scope-settings-menu">Scope settings</button>
                 <div id="scope-settings-menu" class="scope-controls" hidden>
@@ -263,14 +313,6 @@ document.querySelector("#app").innerHTML = `
               </select>
             </label>
             <label>Level <compost-number-box id="scope-trigger-level" min="-1" max="1" step="0.01" reset-value="0" display-fraction-digits="2" aria-label="Scope trigger level"></compost-number-box></label>
-            <label>Position
-              <select id="scope-trigger-position">
-                <option value="0.1">10%</option>
-                <option value="0.25">25%</option>
-                <option value="0.5">50%</option>
-                <option value="0.75">75%</option>
-              </select>
-            </label>
             <label>Samples
               <select id="scope-size">
                 <option value="256">256</option>
@@ -294,24 +336,9 @@ document.querySelector("#app").innerHTML = `
                 </div>
               </div>
               <div class="scope-stage"><canvas id="scope-persistence-canvas" aria-hidden="true"></canvas><compost-scope id="scope" value-range="${preferences.scopeRange}" y-markers="0" aria-label="Live patch output waveform"></compost-scope></div>
-            </div>
-          </div>
-          <p id="scope-placeholder" class="scope-placeholder" hidden>Scope open in floating window.</p>
-        </section>
       </div>
-    </aside>
-  </main>
-  <compost-window id="patch-window" heading="Patch UI" x="24" y="24">
-    <div slot="controls" class="patch-window-tabs"><button id="floating-view-toggle" type="button" aria-pressed="false" aria-label="Show parameters" title="Show parameters"><span>UI</span><span>Params</span></button></div>
-    <div id="floating-view" class="patch-view-host"></div>
+    </div>
   </compost-window>
-  <compost-window id="keyboard-window" heading="Keyboard" x="230" y="560" width="560" height="120" min-width="200" min-height="90" resizable="none">
-    <span slot="title" class="keyboard-title"><b>Keyboard</b><span id="midi-octave-label">C3 · 37 notes</span><button id="midi-octave-down" type="button" aria-label="Keyboard down one octave" title="Octave down (Z)">−12</button><button id="midi-octave-up" type="button" aria-label="Keyboard up one octave" title="Octave up (X)">+12</button></span>
-    <div id="floating-keyboard" class="floating-keyboard"><compost-piano id="midi-piano" root-note="48" note-count="37" inline></compost-piano><div class="keyboard-grip left" aria-hidden="true"></div><div class="keyboard-grip right" aria-hidden="true"></div></div>
-  </compost-window>
-  <compost-window id="sequencer-window" heading="Sequencer" x="80" y="80" width="720" height="360" min-width="280" min-height="180"><div id="floating-sequencer" class="sequencer-host"></div></compost-window>
-  <compost-window id="meter-window" heading="Output meters" x="48" y="48" width="180" height="300" min-width="100" min-height="120"><div id="floating-meter" class="meter-host"></div></compost-window>
-  <compost-window id="scope-window" heading="Output scope" x="24" y="24" min-width="0" min-height="0"><div id="floating-scope" class="scope-host"></div></compost-window>
   <div id="explorer-context-menu" class="explorer-context-menu" role="menu" hidden>
     <button type="button" role="menuitem" data-action="new-file">New file</button>
     <button type="button" role="menuitem" data-action="new-folder">New folder</button>
@@ -344,18 +371,18 @@ document.querySelector("#app").innerHTML = `
 
 const elements = Object.fromEntries([
   "main-layout", "preview-resizer", "examples", "build", "stop", "volume", "volume-value", "share", "theme", "more", "file-actions", "download", "import", "import-project", "open-github", "file-input", "project-input", "github-dialog", "github-dialog-title", "github-location-fields", "github-location", "github-manifest-fields", "github-manifest", "github-confirm", "start-gate", "start-app",
-  "vim", "auto-check", "new-file", "new-folder", "active-file-name", "file-tree", "explorer-context-menu", "explorer-resizer", "cursor-position", "check-state", "draft-state", "patch-name", "audio-state", "attribution", "audio-input", "audio-source", "audio-input-channels", "impulse-controls", "fire-impulse", "synth-controls", "synth-waveform", "synth-piano", "device-controls", "audio-device", "enable-audio-input", "wav-controls", "wav-input", "play-wav", "stop-wav", "loop-wav", "input-status", "midi-input", "docked-midi-piano", "docked-sequencer", "sequencer-panel", "sequencer-play", "sequencer-bpm", "open-sequencer", "sequencer-editor", "sequencer-window", "floating-sequencer", "midi-device", "open-keyboard", "keyboard-window", "floating-keyboard", "midi-piano", "midi-octave-down", "midi-octave-up", "midi-octave-label", "open-plugin", "patch-window", "floating-view-toggle", "floating-view", "parameters-home", "parameters", "float-meter", "docked-meter", "meter-panel", "meter-placeholder", "meter-window", "floating-meter", "meter", "cpu-meter", "cpu-level", "cpu-bar", "float-scope", "docked-scope", "scope-panel", "scope-placeholder", "scope-window", "floating-scope", "scope", "scope-settings-toggle", "scope-settings-menu", "scope-trigger", "scope-trigger-level", "scope-trigger-position", "scope-size", "scope-range", "scope-offset", "scope-persistence", "scope-persistence-canvas", "scope-freeze", "scope-duration", "compiler-version", "diagnostic-output", "toast",
+  "vim", "auto-check", "new-file", "new-folder", "active-file-name", "file-tree", "explorer-context-menu", "explorer-resizer", "cursor-position", "check-state", "draft-state", "patch-name", "audio-state", "attribution", "audio-input", "audio-source", "audio-input-channels", "impulse-controls", "fire-impulse", "synth-controls", "synth-waveform", "synth-piano", "device-controls", "audio-device", "enable-audio-input", "wav-controls", "wav-input", "play-wav", "stop-wav", "loop-wav", "input-status", "midi-input", "docked-midi-piano", "docked-sequencer", "sequencer-panel", "sequencer-play", "sequencer-bpm", "open-sequencer", "docked-sequencer-editor", "sequencer-editor", "sequencer-window", "floating-sequencer", "floating-sequencer-play", "floating-sequencer-bpm", "midi-device", "open-keyboard", "keyboard-window", "floating-keyboard", "midi-piano", "midi-octave-down", "midi-octave-up", "midi-octave-label", "open-plugin", "patch-window", "floating-view-toggle", "floating-view", "parameters-home", "parameters", "float-meter", "docked-meter", "meter-panel", "meter-window", "floating-meter", "floating-meter-display", "meter", "cpu-meter", "cpu-level", "cpu-bar", "floating-cpu-meter", "floating-cpu-level", "floating-cpu-bar", "float-scope", "docked-scope", "docked-scope-display", "docked-scope-persistence-canvas", "scope-panel", "scope-window", "floating-scope", "scope", "scope-settings-toggle", "scope-settings-menu", "scope-trigger", "scope-trigger-level", "scope-size", "scope-range", "scope-offset", "scope-persistence", "scope-persistence-canvas", "scope-freeze", "scope-duration", "compiler-version", "diagnostic-output", "toast",
 ].map((id) => [id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()), document.getElementById(id)]));
 
 elements.scopeSize.value = String(preferences.scopeSize);
 elements.scopeRange.value = String(preferences.scopeRange);
 elements.scopeTrigger.value = preferences.scopeTrigger;
 elements.scopeTriggerLevel.value = String(preferences.scopeTriggerLevel);
-elements.scopeTriggerPosition.value = String(preferences.scopeTriggerPosition);
 elements.scopeOffset.value = String(preferences.scopeOffset);
 elements.scopePersistence.value = String(preferences.scopePersistence);
 elements.sequencerEditor.noteIdFactory = () => `note-${crypto.randomUUID()}`;
 elements.sequencerEditor.notes = preferences.sequenceNotes;
+elements.dockedSequencerEditor.notes = preferences.sequenceNotes;
 
 elements.examples.append(new Option("Examples", "", true, true));
 for (const example of examples) elements.examples.append(new Option(example.name, example.id));
@@ -615,7 +642,6 @@ elements.scopeRange.addEventListener("change", () => {
 });
 elements.scopeTrigger.addEventListener("change", () => { preferences.scopeTrigger = elements.scopeTrigger.value; applyScopeSettings(); });
 elements.scopeTriggerLevel.addEventListener("parameter-edit", ({ detail }) => { preferences.scopeTriggerLevel = detail.value; applyScopeSettings(); });
-elements.scopeTriggerPosition.addEventListener("change", () => { preferences.scopeTriggerPosition = Number(elements.scopeTriggerPosition.value); applyScopeSettings(); });
 elements.scopeOffset.addEventListener("parameter-edit", ({ detail }) => { preferences.scopeOffset = detail.value; applyScopeSettings(); });
 elements.scopePersistence.addEventListener("parameter-edit", ({ detail }) => { preferences.scopePersistence = Math.min(1, Math.max(0, detail.value)); applyScopeSettings(); });
 elements.scopeSettingsToggle.addEventListener("click", (event) => {
@@ -630,23 +656,27 @@ elements.scopeFreeze.addEventListener("click", () => {
   elements.scopeFreeze.textContent = frozen ? "Resume" : "Freeze";
 });
 elements.floatScope.addEventListener("click", openFloatingScope);
-elements.scopeWindow.addEventListener("window-close", dockScope);
+elements.scopeWindow.addEventListener("window-close", closeScopeSettings);
 elements.floatMeter.addEventListener("click", openFloatingMeter);
-elements.meterWindow.addEventListener("window-close", dockMeter);
 elements.openKeyboard.addEventListener("click", openFloatingKeyboard);
 elements.keyboardWindow.addEventListener("window-close", () => elements.midiPiano.allNotesOff());
 elements.openSequencer.addEventListener("click", openFloatingSequencer);
-elements.sequencerWindow.addEventListener("window-close", dockSequencer);
 elements.sequencerWindow.addEventListener("window-resize", () => requestAnimationFrame(() => elements.sequencerEditor.refresh()));
-elements.sequencerPlay.addEventListener("click", () => sequencerTimer ? stopSequencer() : startSequencer());
-elements.sequencerBpm.addEventListener("parameter-edit", ({ detail }) => {
-  preferences.sequencerBPM = Math.min(300, Math.max(20, Number(detail.value) || 120));
-  if (sequencerTimer) restartSequencer();
-  savePreferences();
-});
+for (const button of [elements.sequencerPlay, elements.floatingSequencerPlay])
+  button.addEventListener("click", () => sequencerTimer ? stopSequencer() : startSequencer());
+for (const control of [elements.sequencerBpm, elements.floatingSequencerBpm]) {
+  control.addEventListener("parameter-edit", ({ detail }) => {
+    preferences.sequencerBPM = Math.min(300, Math.max(20, Number(detail.value) || 120));
+    elements.sequencerBpm.value = preferences.sequencerBPM;
+    elements.floatingSequencerBpm.value = preferences.sequencerBPM;
+    if (sequencerTimer) restartSequencer();
+    savePreferences();
+  });
+}
 elements.sequencerEditor.addEventListener("notes-change", ({ detail }) => {
   preferences.sequenceNotes = detail.notes;
   elements.sequencerEditor.notes = detail.notes;
+  elements.dockedSequencerEditor.notes = detail.notes;
   savePreferences();
 });
 elements.sequencerEditor.addEventListener("note-preview", ({ detail }) => sendMIDIMessage(packMIDI(0x90, detail.note, detail.velocity, detail.channel)));
@@ -751,6 +781,7 @@ window.addEventListener("beforeunload", () => { compiler?.terminate(); void stop
 renderMeter();
 resetCPU();
 elements.scope.setSamples(new Float32Array(2));
+elements.dockedScopeDisplay.setSamples(new Float32Array(2));
 applyScopeSettings();
 changeMIDIOctave(0);
 paintTheme();
@@ -926,9 +957,7 @@ function applyPreviewSize() {
 }
 
 function openFloatingMeter() {
-  elements.floatingMeter.append(elements.meterPanel);
-  elements.meterPlaceholder.hidden = false;
-  elements.floatMeter.disabled = true;
+  if (elements.meterWindow.open) { elements.meterWindow.raise(); return; }
   elements.meterWindow.removeAttribute("fullscreen");
   const compact = innerWidth <= 600;
   elements.meterWindow.setAttribute("width", String(compact ? Math.min(180, innerWidth - 32) : 180));
@@ -936,15 +965,11 @@ function openFloatingMeter() {
   elements.meterWindow.setAttribute("x", String(compact ? 16 : 48));
   elements.meterWindow.setAttribute("y", String(compact ? 56 : 48));
   elements.meterWindow.open = true;
-}
-
-function dockMeter() {
-  if (elements.meterPanel.parentElement !== elements.dockedMeter) elements.dockedMeter.append(elements.meterPanel);
-  elements.meterPlaceholder.hidden = true;
-  elements.floatMeter.disabled = false;
+  renderMeter();
 }
 
 function openFloatingKeyboard() {
+  if (elements.keyboardWindow.open) { elements.keyboardWindow.raise(); return; }
   elements.keyboardWindow.removeAttribute("fullscreen");
   const compact = innerWidth <= 600;
   setKeyboardRange(preferences.midiRoot, Number(elements.midiPiano.getAttribute("note-count")) || 37);
@@ -955,23 +980,12 @@ function openFloatingKeyboard() {
 }
 
 function openFloatingSequencer() {
-  elements.floatingSequencer.append(elements.sequencerPanel);
-  elements.sequencerEditor.removeAttribute("fold");
-  elements.sequencerEditor.readonly = false;
-  elements.openSequencer.disabled = true;
+  if (elements.sequencerWindow.open) { elements.sequencerWindow.raise(); return; }
   elements.sequencerWindow.removeAttribute("fullscreen");
   const compact = innerWidth <= 600;
   elements.sequencerWindow.setContentSize(compact ? innerWidth - 24 : Math.min(720, innerWidth - 48), compact ? Math.min(360, innerHeight - 120) : Math.min(420, innerHeight - 100));
   elements.sequencerWindow.moveTo(compact ? 12 : Math.max(24, Math.round((innerWidth - 720) / 2)), compact ? 56 : 64);
   elements.sequencerWindow.open = true;
-  requestAnimationFrame(() => elements.sequencerEditor.refresh());
-}
-
-function dockSequencer() {
-  if (elements.sequencerPanel.parentElement !== elements.dockedSequencer) elements.dockedSequencer.append(elements.sequencerPanel);
-  elements.sequencerEditor.setAttribute("fold", "");
-  elements.sequencerEditor.readonly = true;
-  elements.openSequencer.disabled = false;
   requestAnimationFrame(() => elements.sequencerEditor.refresh());
 }
 
@@ -1036,10 +1050,10 @@ function dockParameters() {
 }
 
 function openFloatingScope() {
+  if (elements.scopeWindow.open) { elements.scopeWindow.raise(); return; }
   closeScopeSettings();
-  elements.floatingScope.append(elements.scopePanel);
-  elements.scopePlaceholder.hidden = false;
-  elements.floatScope.disabled = true;
+  const context = elements.scopePersistenceCanvas.getContext("2d");
+  context.clearRect(0, 0, elements.scopePersistenceCanvas.width, elements.scopePersistenceCanvas.height);
   elements.scopeWindow.removeAttribute("fullscreen");
   const compact = innerWidth <= 600;
   elements.scopeWindow.setAttribute("width", String(compact ? innerWidth - 40 : Math.min(620, innerWidth - 48)));
@@ -1047,13 +1061,6 @@ function openFloatingScope() {
   elements.scopeWindow.setAttribute("x", String(compact ? 20 : Math.max(24, Math.round((innerWidth - 620) / 2))));
   elements.scopeWindow.setAttribute("y", String(compact ? 56 : 40));
   elements.scopeWindow.open = true;
-}
-
-function dockScope() {
-  closeScopeSettings();
-  if (elements.scopePanel.parentElement !== elements.dockedScope) elements.dockedScope.append(elements.scopePanel);
-  elements.scopePlaceholder.hidden = true;
-  elements.floatScope.disabled = false;
 }
 
 function openScopeSettings() {
@@ -1079,14 +1086,15 @@ function changeMIDIOctave(delta) {
 }
 
 function setKeyboardRange(root, count, anchorRight = null) {
-  count = Math.min(81, Math.max(13, Math.round(count)));
-  root = Math.min(127 - count, Math.max(0, Math.round(root)));
+  ({ root, count } = normaliseKeyboardRange(root, count));
   preferences.midiRoot = root;
+  preferences.midiCount = count;
   elements.midiPiano.allNotesOff();
   elements.midiPiano.setAttribute("root-note", String(root));
   elements.midiPiano.setAttribute("note-count", String(count));
   elements.dockedMidiPiano.allNotesOff();
   elements.dockedMidiPiano.setAttribute("root-note", String(root));
+  elements.dockedMidiPiano.setAttribute("note-count", String(Math.min(25, 128 - root)));
   elements.midiOctaveLabel.textContent = `${noteName(root)} · ${count} notes`;
   elements.midiOctaveDown.disabled = preferences.midiRoot === 0;
   elements.midiOctaveUp.disabled = preferences.midiRoot === 127 - count;
@@ -1109,9 +1117,11 @@ function startSequencer() {
   if (!midiInputTarget || sequencerTimer) return;
   sequencerStartedAt = performance.now() + 40;
   sequencerScheduledThrough = sequencerStartedAt;
-  elements.sequencerPlay.textContent = "■";
-  elements.sequencerPlay.setAttribute("aria-label", "Stop sequence");
-  elements.sequencerPlay.title = "Stop sequence";
+  for (const button of [elements.sequencerPlay, elements.floatingSequencerPlay]) {
+    button.textContent = "■";
+    button.setAttribute("aria-label", "Stop sequence");
+    button.title = "Stop sequence";
+  }
   scheduleSequenceLookahead();
   sequencerTimer = setInterval(scheduleSequenceLookahead, 20);
   updateSequencerPlayhead();
@@ -1141,7 +1151,8 @@ function scheduleSequenceLookahead() {
 function updateSequencerPlayhead() {
   if (!sequencerTimer) return;
   const beat = Math.max(0, (performance.now() - sequencerStartedAt) * preferences.sequencerBPM / 60000) % 4;
-  elements.sequencerEditor.setAttribute("playhead", String(beat));
+  elements.dockedSequencerEditor.setAttribute("playhead", String(beat));
+  if (elements.sequencerWindow.open) elements.sequencerEditor.setAttribute("playhead", String(beat));
   sequencerFrame = requestAnimationFrame(updateSequencerPlayhead);
 }
 
@@ -1150,9 +1161,12 @@ function stopSequencer() {
   cancelAnimationFrame(sequencerFrame);
   sequencerTimer = sequencerFrame = 0;
   elements.sequencerEditor.removeAttribute("playhead");
-  elements.sequencerPlay.textContent = "▶";
-  elements.sequencerPlay.setAttribute("aria-label", "Play sequence");
-  elements.sequencerPlay.title = "Play sequence";
+  elements.dockedSequencerEditor.removeAttribute("playhead");
+  for (const button of [elements.sequencerPlay, elements.floatingSequencerPlay]) {
+    button.textContent = "▶";
+    button.setAttribute("aria-label", "Play sequence");
+    button.title = "Play sequence";
+  }
   if (!midiInputTarget) return;
   const { connection, endpointID } = midiInputTarget;
   connection.clearScheduledMIDIInputEvents?.();
@@ -1908,6 +1922,7 @@ async function stopAudio(updateUI) {
     resetMeter();
     resetCPU();
     elements.scope.setSamples(new Float32Array(2));
+    elements.dockedScopeDisplay.setSamples(new Float32Array(2));
     clearScopePersistence();
     elements.scopeFreeze.setAttribute("aria-pressed", "false");
     elements.scopeFreeze.textContent = "Freeze";
@@ -1926,6 +1941,7 @@ function renderMIDIInput(endpoint, connection) {
   }
   midiInputTarget = endpoint && connection ? { endpointID: endpoint.endpointID, connection } : null;
   elements.sequencerPlay.disabled = !midiInputTarget;
+  elements.floatingSequencerPlay.disabled = !midiInputTarget;
   if (endpoint) openFloatingKeyboard();
 }
 
@@ -2201,9 +2217,11 @@ function startMeter() {
     analyser.getFloatTimeDomainData(data);
     if (elements.scopeFreeze.getAttribute("aria-pressed") !== "true") {
       const samples = selectScopeSamples(data);
+      paintScopePersistence(elements.dockedScopePersistenceCanvas, samples, time - previousTime);
+      if (elements.scopeWindow.open) paintScopePersistence(elements.scopePersistenceCanvas, samples, time - previousTime);
       if (samples) {
-        paintScopePersistence(samples, time - previousTime);
-        elements.scope.setSamples(samples);
+        elements.dockedScopeDisplay.setSamples(samples);
+        if (elements.scopeWindow.open) elements.scope.setSamples(samples);
       }
     }
     previousTime = time;
@@ -2218,15 +2236,16 @@ function analyserSize() {
 
 function applyScopeSettings() {
   if (analyser) analyser.fftSize = analyserSize();
-  elements.scope.setAttribute("value-range", String(preferences.scopeRange));
-  elements.scope.setAttribute("y-offset", String(preferences.scopeOffset));
   const low = Number((preferences.scopeOffset - preferences.scopeRange).toFixed(3));
   const high = Number((preferences.scopeOffset + preferences.scopeRange).toFixed(3));
-  elements.scope.setAttribute("y-marker-labels", `${low}:${low},${preferences.scopeOffset}:${preferences.scopeOffset},${high}:${high}`);
-  elements.scope.setAttribute("y-markers", preferences.scopeTrigger === "free" ? String(preferences.scopeOffset) : `${preferences.scopeOffset},${preferences.scopeTriggerLevel}`);
-  elements.scope.setAttribute("x-markers", preferences.scopeTrigger === "free" ? "" : String(preferences.scopeTriggerPosition));
+  for (const scope of [elements.scope, elements.dockedScopeDisplay]) {
+    scope.setAttribute("value-range", String(preferences.scopeRange));
+    scope.setAttribute("y-offset", String(preferences.scopeOffset));
+    scope.setAttribute("y-marker-labels", `${low}:${low},${preferences.scopeOffset}:${preferences.scopeOffset},${high}:${high}`);
+    scope.setAttribute("y-markers", preferences.scopeTrigger === "free" ? String(preferences.scopeOffset) : `${preferences.scopeOffset},${preferences.scopeTriggerLevel}`);
+    scope.setAttribute("x-markers", preferences.scopeTrigger === "free" ? "" : String(preferences.scopeTriggerPosition));
+  }
   elements.scopeTriggerLevel.disabled = preferences.scopeTrigger === "free";
-  elements.scopeTriggerPosition.disabled = preferences.scopeTrigger === "free";
   if (preferences.scopePersistence === 0) clearScopePersistence();
   updateScopeLabels();
   savePreferences();
@@ -2249,8 +2268,7 @@ function selectScopeSamples(data) {
   return null;
 }
 
-function paintScopePersistence(samples, elapsed) {
-  const canvas = elements.scopePersistenceCanvas;
+function paintScopePersistence(canvas, samples, elapsed) {
   const rect = canvas.parentElement.getBoundingClientRect();
   const ratio = devicePixelRatio || 1;
   const width = Math.max(1, Math.round(rect.width * ratio));
@@ -2262,6 +2280,7 @@ function paintScopePersistence(samples, elapsed) {
   context.fillStyle = `rgba(0,0,0,${1 - Math.exp(-elapsed / (preferences.scopePersistence * 1000))})`;
   context.fillRect(0, 0, width, height);
   context.globalCompositeOperation = "source-over";
+  if (!samples) return;
   context.globalAlpha = 0.16;
   context.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--sel");
   context.lineWidth = Math.max(1, ratio);
@@ -2276,8 +2295,8 @@ function paintScopePersistence(samples, elapsed) {
 }
 
 function clearScopePersistence() {
-  const canvas = elements.scopePersistenceCanvas;
-  canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+  for (const canvas of [elements.scopePersistenceCanvas, elements.dockedScopePersistenceCanvas])
+    canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
 }
 
 function updateScopeLabels() {
@@ -2285,7 +2304,8 @@ function updateScopeLabels() {
   const duration = (preferences.scopeSize / sampleRate) * 1000;
   const trigger = preferences.scopeTrigger === "free" ? "Free run" : `${preferences.scopeTrigger} @ ${preferences.scopeTriggerLevel}`;
   elements.scopeDuration.textContent = `${preferences.scopeSize} samples · ${duration.toFixed(1)} ms · ${trigger}`;
-  elements.scope.setAttribute("x-marker-labels", `0.5:${(duration / 2).toFixed(1)} ms`);
+  for (const scope of [elements.scope, elements.dockedScopeDisplay])
+    scope.setAttribute("x-marker-labels", `0.5:${(duration / 2).toFixed(1)} ms`);
 }
 
 function resetMeter() {
@@ -2295,7 +2315,7 @@ function resetMeter() {
 }
 
 function renderMeter(now = performance.now()) {
-  elements.meter.setState({
+  const state = {
     primaryLabel: "",
     holdLabel: "",
     unit: "",
@@ -2305,7 +2325,9 @@ function renderMeter(now = performance.now()) {
       over: channel.currentLevel,
       clipped: channel.currentLevel >= 0,
     })),
-  });
+  };
+  elements.meter.setState(state);
+  if (elements.meterWindow.open) elements.floatingMeterDisplay.setState(state);
 }
 
 function attachCPUMonitor(connection) {
@@ -2334,18 +2356,22 @@ function stopCPUTimer(markSample) {
     cpuSampleComplete = true;
   }
   else {
-    elements.cpuLevel.textContent = "n/a";
-    elements.cpuMeter.removeAttribute("aria-valuenow");
-    elements.cpuMeter.setAttribute("aria-valuetext", "DSP CPU unavailable because the diagnostic timer did not run concurrently with the AudioWorklet");
+    for (const display of cpuDisplays()) {
+      display.level.textContent = "n/a";
+      display.meter.removeAttribute("aria-valuenow");
+      display.meter.setAttribute("aria-valuetext", "DSP CPU unavailable because the diagnostic timer did not run concurrently with the AudioWorklet");
+    }
   }
 }
 
 function resetCPU() {
-  elements.cpuLevel.textContent = "—";
-  elements.cpuBar.style.width = "0%";
-  elements.cpuMeter.classList.remove("high", "timer-limited");
-  elements.cpuMeter.removeAttribute("aria-valuenow");
-  elements.cpuMeter.setAttribute("aria-valuetext", "Waiting for DSP CPU measurement");
+  for (const { meter, level, bar } of cpuDisplays()) {
+    level.textContent = "—";
+    bar.style.width = "0%";
+    meter.classList.remove("high", "timer-limited");
+    meter.removeAttribute("aria-valuenow");
+    meter.setAttribute("aria-valuetext", "Waiting for DSP CPU measurement");
+  }
 }
 
 function updateCPU({ level, timerResolution }) {
@@ -2356,13 +2382,22 @@ function updateCPU({ level, timerResolution }) {
     if (cpuTimerBuffer && !cpuTimerWorker) cpuSampleComplete = true;
   }
   const label = timerLimited ? "n/a" : level === 0 ? "<0.1%" : `${percentage.toFixed(1)}%`;
-  elements.cpuLevel.textContent = label;
-  elements.cpuBar.style.width = `${timerLimited ? 0 : percentage}%`;
-  elements.cpuMeter.classList.toggle("high", level >= 0.8);
-  elements.cpuMeter.classList.toggle("timer-limited", timerLimited);
-  if (timerLimited) elements.cpuMeter.removeAttribute("aria-valuenow");
-  else elements.cpuMeter.setAttribute("aria-valuenow", percentage.toFixed(1));
-  elements.cpuMeter.setAttribute("aria-valuetext", timerLimited ? `DSP CPU unavailable because this AudioWorklet clock has ${timerResolution.toFixed(1)} millisecond resolution` : `${label} of the audio callback budget`);
+  for (const display of cpuDisplays()) {
+    display.level.textContent = label;
+    display.bar.style.width = `${timerLimited ? 0 : percentage}%`;
+    display.meter.classList.toggle("high", level >= 0.8);
+    display.meter.classList.toggle("timer-limited", timerLimited);
+    if (timerLimited) display.meter.removeAttribute("aria-valuenow");
+    else display.meter.setAttribute("aria-valuenow", percentage.toFixed(1));
+    display.meter.setAttribute("aria-valuetext", timerLimited ? `DSP CPU unavailable because this AudioWorklet clock has ${timerResolution.toFixed(1)} millisecond resolution` : `${label} of the audio callback budget`);
+  }
+}
+
+function cpuDisplays() {
+  return [
+    { meter: elements.cpuMeter, level: elements.cpuLevel, bar: elements.cpuBar },
+    { meter: elements.floatingCpuMeter, level: elements.floatingCpuLevel, bar: elements.floatingCpuBar },
+  ];
 }
 
 function firstDiagnosticPath(message) {
