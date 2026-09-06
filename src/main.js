@@ -11,6 +11,7 @@ import { getCM, vim } from "@replit/codemirror-vim";
 import "compost/components/compost-knob";
 import "compost/components/compost-meter";
 import "compost/components/compost-midi";
+import "compost/components/compost-note-editor";
 import "compost/components/compost-number-box";
 import "compost/components/compost-piano";
 import "compost/components/compost-scope";
@@ -24,6 +25,7 @@ import {
   parseGitHubProject,
 } from "./github-project.js";
 import { createMeterChannel, setChannelMinMax } from "./metering.js";
+import { allNotesOffMessages, DEFAULT_SEQUENCE_NOTES, packMIDI, sequenceEventsInWindow } from "./sequencer.js";
 import { decodeProject, encodeProject, MAX_SOURCE_BYTES } from "./share.js";
 import "./style.css";
 
@@ -75,6 +77,10 @@ let projectAssetFiles = [];
 let projectFolders = [];
 let projectResourceRoot = null;
 let midiInputTarget = null;
+let sequencerTimer = 0;
+let sequencerFrame = 0;
+let sequencerStartedAt = 0;
+let sequencerScheduledThrough = 0;
 let audioInputTarget = null;
 let mediaInputStream = null;
 let mediaInputNode = null;
@@ -88,19 +94,23 @@ let pendingExplorerEdit = null;
 let explorerContextTarget = null;
 let githubShareURL = "";
 let githubShareRevision = -1;
+let initialProjectReady = Promise.resolve();
 
 const preferences = {
   vim: false,
   autoCheck: true,
   volume: 0.7,
   scopeSize: 1024,
-  scopeRange: 0.25,
+  scopeRange: 1,
   scopeTrigger: "free",
   scopeTriggerLevel: 0,
   scopeTriggerPosition: 0.25,
   scopeOffset: 0,
   scopePersistence: 0.05,
   midiRoot: 48,
+  sequencerBPM: 120,
+  sequenceNotes: DEFAULT_SEQUENCE_NOTES,
+  sequencerPatternVersion: 3,
   explorerWidth: 165,
   explorerHeight: 99,
   previewWidth: 341,
@@ -109,6 +119,11 @@ const preferences = {
 };
 preferences.scopePersistence = Math.min(1, Math.max(0, Number(preferences.scopePersistence) || 0));
 preferences.midiRoot = Math.min(91, Math.max(0, Number(preferences.midiRoot) || 48));
+preferences.sequencerBPM = Math.min(300, Math.max(20, Number(preferences.sequencerBPM) || 120));
+if (preferences.sequencerPatternVersion !== 3 || !Array.isArray(preferences.sequenceNotes)) {
+  preferences.sequenceNotes = DEFAULT_SEQUENCE_NOTES.map((note) => ({ ...note }));
+  preferences.sequencerPatternVersion = 3;
+}
 
 document.querySelector("#app").innerHTML = `
   <header class="topbar">
@@ -156,7 +171,15 @@ document.querySelector("#app").innerHTML = `
         <div id="explorer-resizer" class="explorer-resizer" role="separator" aria-label="Resize project explorer" tabindex="0"></div>
         <div id="editor"></div>
       </div>
-      <div class="editor-footer"><span id="cursor-position">Ln 1, Col 1</span><span id="check-state" class="visually-hidden" role="status">${preferences.autoCheck ? "Auto-compile ready" : "Auto-compile off"}</span><span id="draft-state" class="visually-hidden">Draft saved locally</span></div>
+      <div class="editor-footer">
+        <span id="cursor-position">Ln 1, Col 1</span>
+        <section class="diagnostics" aria-live="polite">
+          <span id="compiler-version" class="visually-hidden"></span>
+          <div id="diagnostic-output" class="diagnostic-output success" hidden><strong>Ready.</strong><span>Press Build &amp; Play to compile in your browser.</span></div>
+        </section>
+        <span id="check-state" class="visually-hidden" role="status">${preferences.autoCheck ? "Auto-compile ready" : "Auto-compile off"}</span>
+        <span id="draft-state" class="visually-hidden">Draft saved locally</span>
+      </div>
     </section>
     <div id="preview-resizer" class="preview-resizer" role="separator" aria-label="Resize patch preview" tabindex="0"></div>
     <aside class="preview" aria-label="Patch preview">
@@ -193,6 +216,16 @@ document.querySelector("#app").innerHTML = `
       </section>
       <section id="midi-input" class="midi-input tool-launcher" aria-label="MIDI input" hidden>
         <compost-piano id="docked-midi-piano" root-note="48" note-count="13" inline aria-label="Compact MIDI keyboard"></compost-piano>
+        <div id="docked-sequencer" class="sequencer-host">
+          <div id="sequencer-panel" class="sequencer-panel">
+            <div class="sequencer-transport">
+              <button id="sequencer-play" type="button" aria-label="Play sequence" title="Play sequence">▶</button>
+              <label><span>Sequence · BPM</span><compost-number-box id="sequencer-bpm" min="20" max="300" step="1" value="${preferences.sequencerBPM}" reset-value="120" display-fraction-digits="0" aria-label="Sequencer tempo"></compost-number-box></label>
+              <button id="open-sequencer" type="button" aria-controls="sequencer-window" aria-label="Open note editor" title="Open note editor">↗</button>
+            </div>
+            <compost-note-editor id="sequencer-editor" label="One-bar sequence" beats="4" start="0" end="4" loop loop-start="0" loop-end="4" lock-loop-start grid="1/16" root-note="36" note-count="37" fold readonly aria-label="One-bar MIDI sequence with bass"></compost-note-editor>
+          </div>
+        </div>
         <div class="midi-tools"><compost-midi id="midi-device" input-only aria-label="Hardware MIDI input"></compost-midi><button id="open-keyboard" type="button" aria-controls="keyboard-window" aria-label="Open MIDI keyboard" title="Open MIDI keyboard">↗</button></div>
       </section>
       <section class="patch-controls" aria-label="Plugin controls">
@@ -266,10 +299,6 @@ document.querySelector("#app").innerHTML = `
           <p id="scope-placeholder" class="scope-placeholder" hidden>Scope open in floating window.</p>
         </section>
       </div>
-      <section class="diagnostics" aria-live="polite">
-        <span id="compiler-version" class="visually-hidden"></span>
-        <div id="diagnostic-output" class="diagnostic-output success" hidden><strong>Ready.</strong><span>Press Build &amp; Play to compile in your browser.</span></div>
-      </section>
     </aside>
   </main>
   <compost-window id="patch-window" heading="Patch UI" x="24" y="24">
@@ -280,6 +309,7 @@ document.querySelector("#app").innerHTML = `
     <span slot="title" class="keyboard-title"><b>Keyboard</b><span id="midi-octave-label">C3 · 37 notes</span><button id="midi-octave-down" type="button" aria-label="Keyboard down one octave" title="Octave down (Z)">−12</button><button id="midi-octave-up" type="button" aria-label="Keyboard up one octave" title="Octave up (X)">+12</button></span>
     <div id="floating-keyboard" class="floating-keyboard"><compost-piano id="midi-piano" root-note="48" note-count="37" inline></compost-piano><div class="keyboard-grip left" aria-hidden="true"></div><div class="keyboard-grip right" aria-hidden="true"></div></div>
   </compost-window>
+  <compost-window id="sequencer-window" heading="Sequencer" x="80" y="80" width="720" height="360" min-width="280" min-height="180"><div id="floating-sequencer" class="sequencer-host"></div></compost-window>
   <compost-window id="meter-window" heading="Output meters" x="48" y="48" width="180" height="300" min-width="100" min-height="120"><div id="floating-meter" class="meter-host"></div></compost-window>
   <compost-window id="scope-window" heading="Output scope" x="24" y="24" min-width="0" min-height="0"><div id="floating-scope" class="scope-host"></div></compost-window>
   <div id="explorer-context-menu" class="explorer-context-menu" role="menu" hidden>
@@ -304,11 +334,17 @@ document.querySelector("#app").innerHTML = `
       <footer><button value="cancel">Cancel</button><button id="github-confirm" class="primary" value="confirm">Open</button></footer>
     </form>
   </dialog>
+  <div id="start-gate" class="start-gate" role="dialog" aria-modal="true" aria-labelledby="start-title">
+    <button id="start-app" type="button" class="start-card">
+      <strong id="start-title">Click to start</strong>
+      <span>Load the patch and enable audio</span>
+    </button>
+  </div>
   <div id="toast" role="status" aria-live="polite"></div>`;
 
 const elements = Object.fromEntries([
-  "main-layout", "preview-resizer", "examples", "build", "stop", "volume", "volume-value", "share", "theme", "more", "file-actions", "download", "import", "import-project", "open-github", "file-input", "project-input", "github-dialog", "github-dialog-title", "github-location-fields", "github-location", "github-manifest-fields", "github-manifest", "github-confirm",
-  "vim", "auto-check", "new-file", "new-folder", "active-file-name", "file-tree", "explorer-context-menu", "explorer-resizer", "cursor-position", "check-state", "draft-state", "patch-name", "audio-state", "attribution", "audio-input", "audio-source", "audio-input-channels", "impulse-controls", "fire-impulse", "synth-controls", "synth-waveform", "synth-piano", "device-controls", "audio-device", "enable-audio-input", "wav-controls", "wav-input", "play-wav", "stop-wav", "loop-wav", "input-status", "midi-input", "docked-midi-piano", "midi-device", "open-keyboard", "keyboard-window", "floating-keyboard", "midi-piano", "midi-octave-down", "midi-octave-up", "midi-octave-label", "open-plugin", "patch-window", "floating-view-toggle", "floating-view", "parameters-home", "parameters", "float-meter", "docked-meter", "meter-panel", "meter-placeholder", "meter-window", "floating-meter", "meter", "cpu-meter", "cpu-level", "cpu-bar", "float-scope", "docked-scope", "scope-panel", "scope-placeholder", "scope-window", "floating-scope", "scope", "scope-settings-toggle", "scope-settings-menu", "scope-trigger", "scope-trigger-level", "scope-trigger-position", "scope-size", "scope-range", "scope-offset", "scope-persistence", "scope-persistence-canvas", "scope-freeze", "scope-duration", "compiler-version", "diagnostic-output", "toast",
+  "main-layout", "preview-resizer", "examples", "build", "stop", "volume", "volume-value", "share", "theme", "more", "file-actions", "download", "import", "import-project", "open-github", "file-input", "project-input", "github-dialog", "github-dialog-title", "github-location-fields", "github-location", "github-manifest-fields", "github-manifest", "github-confirm", "start-gate", "start-app",
+  "vim", "auto-check", "new-file", "new-folder", "active-file-name", "file-tree", "explorer-context-menu", "explorer-resizer", "cursor-position", "check-state", "draft-state", "patch-name", "audio-state", "attribution", "audio-input", "audio-source", "audio-input-channels", "impulse-controls", "fire-impulse", "synth-controls", "synth-waveform", "synth-piano", "device-controls", "audio-device", "enable-audio-input", "wav-controls", "wav-input", "play-wav", "stop-wav", "loop-wav", "input-status", "midi-input", "docked-midi-piano", "docked-sequencer", "sequencer-panel", "sequencer-play", "sequencer-bpm", "open-sequencer", "sequencer-editor", "sequencer-window", "floating-sequencer", "midi-device", "open-keyboard", "keyboard-window", "floating-keyboard", "midi-piano", "midi-octave-down", "midi-octave-up", "midi-octave-label", "open-plugin", "patch-window", "floating-view-toggle", "floating-view", "parameters-home", "parameters", "float-meter", "docked-meter", "meter-panel", "meter-placeholder", "meter-window", "floating-meter", "meter", "cpu-meter", "cpu-level", "cpu-bar", "float-scope", "docked-scope", "scope-panel", "scope-placeholder", "scope-window", "floating-scope", "scope", "scope-settings-toggle", "scope-settings-menu", "scope-trigger", "scope-trigger-level", "scope-trigger-position", "scope-size", "scope-range", "scope-offset", "scope-persistence", "scope-persistence-canvas", "scope-freeze", "scope-duration", "compiler-version", "diagnostic-output", "toast",
 ].map((id) => [id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()), document.getElementById(id)]));
 
 elements.scopeSize.value = String(preferences.scopeSize);
@@ -318,18 +354,11 @@ elements.scopeTriggerLevel.value = String(preferences.scopeTriggerLevel);
 elements.scopeTriggerPosition.value = String(preferences.scopeTriggerPosition);
 elements.scopeOffset.value = String(preferences.scopeOffset);
 elements.scopePersistence.value = String(preferences.scopePersistence);
+elements.sequencerEditor.noteIdFactory = () => `note-${crypto.randomUUID()}`;
+elements.sequencerEditor.notes = preferences.sequenceNotes;
 
-const playgroundGroup = document.createElement("optgroup");
-playgroundGroup.label = "Playground";
-const projectGroup = document.createElement("optgroup");
-projectGroup.label = "Projects";
-const upstreamGroup = document.createElement("optgroup");
-upstreamGroup.label = "Official Cmajor examples";
 elements.examples.append(new Option("Examples", "", true, true));
-for (const example of examples) {
-  (example.group === "project" ? projectGroup : example.upstreamProject ? upstreamGroup : playgroundGroup).append(new Option(example.name, example.id));
-}
-elements.examples.append(playgroundGroup, projectGroup, upstreamGroup);
+for (const example of examples) elements.examples.append(new Option(example.name, example.id));
 
 const initial = await loadInitialProject();
 let activeExample = examples.find(({ id }) => id === initial.exampleID) || null;
@@ -474,6 +503,7 @@ function beginProjectLoad(name) {
   renderMIDIInput(null, null);
   renderAudioInput([], null);
   if (elements.keyboardWindow.open) elements.keyboardWindow.close();
+  if (elements.sequencerWindow.open) elements.sequencerWindow.close();
   if (elements.meterWindow.open) elements.meterWindow.close();
   if (elements.scopeWindow.open) elements.scopeWindow.close();
   elements.patchName.textContent = `Loading ${name}…`;
@@ -559,6 +589,14 @@ document.addEventListener("keydown", (event) => {
   elements.more.setAttribute("aria-expanded", "false");
   closeScopeSettings();
 });
+document.addEventListener("keydown", (event) => {
+  if (event.code !== "Space" || event.repeat || elements.midiInput.hidden) return;
+  const target = event.composedPath()[0];
+  if (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(target.tagName) || target.closest(".cm-editor"))) return;
+  event.preventDefault();
+  if (sequencerTimer) stopSequencer();
+  else startSequencer();
+});
 
 elements.volume.addEventListener("input", () => {
   preferences.volume = Number(elements.volume.value);
@@ -597,6 +635,22 @@ elements.floatMeter.addEventListener("click", openFloatingMeter);
 elements.meterWindow.addEventListener("window-close", dockMeter);
 elements.openKeyboard.addEventListener("click", openFloatingKeyboard);
 elements.keyboardWindow.addEventListener("window-close", () => elements.midiPiano.allNotesOff());
+elements.openSequencer.addEventListener("click", openFloatingSequencer);
+elements.sequencerWindow.addEventListener("window-close", dockSequencer);
+elements.sequencerWindow.addEventListener("window-resize", () => requestAnimationFrame(() => elements.sequencerEditor.refresh()));
+elements.sequencerPlay.addEventListener("click", () => sequencerTimer ? stopSequencer() : startSequencer());
+elements.sequencerBpm.addEventListener("parameter-edit", ({ detail }) => {
+  preferences.sequencerBPM = Math.min(300, Math.max(20, Number(detail.value) || 120));
+  if (sequencerTimer) restartSequencer();
+  savePreferences();
+});
+elements.sequencerEditor.addEventListener("notes-change", ({ detail }) => {
+  preferences.sequenceNotes = detail.notes;
+  elements.sequencerEditor.notes = detail.notes;
+  savePreferences();
+});
+elements.sequencerEditor.addEventListener("note-preview", ({ detail }) => sendMIDIMessage(packMIDI(0x90, detail.note, detail.velocity, detail.channel)));
+elements.sequencerEditor.addEventListener("note-preview-end", ({ detail }) => sendMIDIMessage(packMIDI(0x80, detail.note, 0, detail.channel)));
 elements.openPlugin.addEventListener("click", () => {
   if (elements.floatingView.querySelector(".patch-view-frame")) openFloatingPatchView();
   else openFloatingParameters();
@@ -654,10 +708,24 @@ elements.wavInput.addEventListener("change", loadWavFile);
 elements.playWav.addEventListener("click", playWav);
 elements.stopWav.addEventListener("click", () => stopWav(true));
 
-elements.build.addEventListener("click", buildAndPlay);
+elements.build.addEventListener("click", () => void buildAndPlay());
 elements.stop.addEventListener("click", () => stopAudio(true));
 elements.share.addEventListener("click", shareProject);
 elements.theme.addEventListener("click", toggleTheme);
+elements.startApp.addEventListener("click", async () => {
+  elements.startGate.hidden = true;
+  let audioPreparation;
+  try {
+    audioPreparation = prepareAudioFromUserGesture();
+  } catch (error) {
+    elements.startGate.hidden = false;
+    showDiagnostic("error", "Audio unavailable", error instanceof Error ? error.message : String(error));
+    return;
+  }
+  showDiagnostic("busy", "Loading patch…", "Compiling Cmajor in this browser.");
+  await initialProjectReady;
+  await buildAndPlay(audioPreparation);
+});
 elements.more.addEventListener("click", () => {
   elements.fileActions.hidden = !elements.fileActions.hidden;
   elements.more.setAttribute("aria-expanded", String(!elements.fileActions.hidden));
@@ -686,7 +754,12 @@ elements.scope.setSamples(new Float32Array(2));
 applyScopeSettings();
 changeMIDIOctave(0);
 paintTheme();
-if (initial.githubProject) void openGitHubProject(initial.githubProject);
+if (initial.githubProject) initialProjectReady = openGitHubProject(initial.githubProject);
+else if (initial.upstreamExample) {
+  beginProjectLoad(initial.upstreamExample.name);
+  initialProjectReady = loadUpstreamExample(initial.upstreamExample);
+}
+else scheduleAutoCheck();
 
 async function loadInitialProject() {
   const fragment = new URLSearchParams(location.hash.slice(1));
@@ -697,15 +770,15 @@ async function loadInitialProject() {
       return { ...shared, attribution: "Restored from this share link." };
     } catch (error) {
       setTimeout(() => showDiagnostic("error", "Share link error", error.message), 0);
-      return { ...examples[0], exampleID: examples[0].id };
+      return defaultExampleProject();
     }
   }
   if (fragment.has("github")) {
     try {
-      return { ...examples[0], exampleID: examples[0].id, githubProject: githubProjectFromFragment(fragment) };
+      return { ...defaultExampleProject(), githubProject: githubProjectFromFragment(fragment) };
     } catch (error) {
       setTimeout(() => showDiagnostic("error", "GitHub link error", error.message), 0);
-      return { ...examples[0], exampleID: examples[0].id };
+      return defaultExampleProject();
     }
   }
   const draft = loadJSON(DRAFT_KEY, null);
@@ -726,7 +799,18 @@ async function loadInitialProject() {
       attribution: "Automatically recovered from this browser.",
     };
   }
-  return { ...examples[0], exampleID: examples[0].id };
+  return defaultExampleProject();
+}
+
+function defaultExampleProject() {
+  const example = examples[0];
+  return {
+    source: `// Loading the official Cmajor ${example.name} example…\n`,
+    files: [],
+    name: example.name,
+    attribution: example.attribution,
+    upstreamExample: example,
+  };
 }
 
 function loadJSON(key, fallback) {
@@ -870,6 +954,27 @@ function openFloatingKeyboard() {
   requestAnimationFrame(() => elements.midiPiano.focus({ preventScroll: true }));
 }
 
+function openFloatingSequencer() {
+  elements.floatingSequencer.append(elements.sequencerPanel);
+  elements.sequencerEditor.removeAttribute("fold");
+  elements.sequencerEditor.readonly = false;
+  elements.openSequencer.disabled = true;
+  elements.sequencerWindow.removeAttribute("fullscreen");
+  const compact = innerWidth <= 600;
+  elements.sequencerWindow.setContentSize(compact ? innerWidth - 24 : Math.min(720, innerWidth - 48), compact ? Math.min(360, innerHeight - 120) : Math.min(420, innerHeight - 100));
+  elements.sequencerWindow.moveTo(compact ? 12 : Math.max(24, Math.round((innerWidth - 720) / 2)), compact ? 56 : 64);
+  elements.sequencerWindow.open = true;
+  requestAnimationFrame(() => elements.sequencerEditor.refresh());
+}
+
+function dockSequencer() {
+  if (elements.sequencerPanel.parentElement !== elements.dockedSequencer) elements.dockedSequencer.append(elements.sequencerPanel);
+  elements.sequencerEditor.setAttribute("fold", "");
+  elements.sequencerEditor.readonly = true;
+  elements.openSequencer.disabled = false;
+  requestAnimationFrame(() => elements.sequencerEditor.refresh());
+}
+
 function openFloatingPatchView() {
   const view = elements.floatingView.querySelector(".patch-view-frame");
   if (!view) return;
@@ -998,6 +1103,60 @@ function sendMIDIMessage(message, timestamp = performance.now()) {
   const { connection, endpointID } = midiInputTarget;
   if (typeof connection.sendScheduledMIDIInputEvent === "function") connection.sendScheduledMIDIInputEvent(endpointID, message, timestamp);
   else connection.sendMIDIInputEvent(endpointID, message);
+}
+
+function startSequencer() {
+  if (!midiInputTarget || sequencerTimer) return;
+  sequencerStartedAt = performance.now() + 40;
+  sequencerScheduledThrough = sequencerStartedAt;
+  elements.sequencerPlay.textContent = "■";
+  elements.sequencerPlay.setAttribute("aria-label", "Stop sequence");
+  elements.sequencerPlay.title = "Stop sequence";
+  scheduleSequenceLookahead();
+  sequencerTimer = setInterval(scheduleSequenceLookahead, 20);
+  updateSequencerPlayhead();
+}
+
+function restartSequencer() {
+  stopSequencer();
+  startSequencer();
+}
+
+function scheduleSequenceLookahead() {
+  if (!midiInputTarget) { stopSequencer(); return; }
+  const now = performance.now();
+  const from = Math.max(sequencerScheduledThrough, now + 5);
+  const to = now + 100;
+  if (to <= from) return;
+  for (const event of sequenceEventsInWindow(preferences.sequenceNotes, {
+    from,
+    to,
+    startedAt: sequencerStartedAt,
+    bpm: preferences.sequencerBPM,
+    beats: 4,
+  })) sendMIDIMessage(event.message, event.timestamp);
+  sequencerScheduledThrough = to;
+}
+
+function updateSequencerPlayhead() {
+  if (!sequencerTimer) return;
+  const beat = Math.max(0, (performance.now() - sequencerStartedAt) * preferences.sequencerBPM / 60000) % 4;
+  elements.sequencerEditor.setAttribute("playhead", String(beat));
+  sequencerFrame = requestAnimationFrame(updateSequencerPlayhead);
+}
+
+function stopSequencer() {
+  clearInterval(sequencerTimer);
+  cancelAnimationFrame(sequencerFrame);
+  sequencerTimer = sequencerFrame = 0;
+  elements.sequencerEditor.removeAttribute("playhead");
+  elements.sequencerPlay.textContent = "▶";
+  elements.sequencerPlay.setAttribute("aria-label", "Play sequence");
+  elements.sequencerPlay.title = "Play sequence";
+  if (!midiInputTarget) return;
+  const { connection, endpointID } = midiInputTarget;
+  connection.clearScheduledMIDIInputEvents?.();
+  for (const message of allNotesOffMessages()) connection.sendMIDIInputEvent(endpointID, message);
 }
 
 function paintTheme() {
@@ -1538,7 +1697,7 @@ async function runAutoCheck() {
   if (autoCheckPending || projectFingerprint() !== lastCheckedSource) scheduleAutoCheck();
 }
 
-async function buildAndPlay() {
+async function buildAndPlay(preparedAudio = null) {
   const id = ++requestID;
   ++diagnosticEpoch;
   if (autoCheckRunning) resetCompilerWorker("Auto-compile was cancelled so Build & Play can run.");
@@ -1556,7 +1715,7 @@ async function buildAndPlay() {
 
   let audioPreparation;
   try {
-    audioPreparation = prepareAudioFromUserGesture();
+    audioPreparation = preparedAudio || prepareAudioFromUserGesture();
   } catch (error) {
     showDiagnostic("error", "Audio unavailable", error instanceof Error ? error.message : String(error));
     elements.audioState.textContent = activeConnection ? "Playing old build" : "Stopped";
@@ -1757,11 +1916,16 @@ async function stopAudio(updateUI) {
 }
 
 function renderMIDIInput(endpoint, connection) {
+  stopSequencer();
   elements.midiPiano.allNotesOff();
   changeMIDIOctave(0);
   elements.midiInput.hidden = !endpoint;
-  if (!endpoint) elements.keyboardWindow.open = false;
+  if (!endpoint) {
+    elements.keyboardWindow.open = false;
+    if (elements.sequencerWindow.open) elements.sequencerWindow.close();
+  }
   midiInputTarget = endpoint && connection ? { endpointID: endpoint.endpointID, connection } : null;
+  elements.sequencerPlay.disabled = !midiInputTarget;
   if (endpoint) openFloatingKeyboard();
 }
 
@@ -1981,6 +2145,7 @@ async function renderCustomView(example, connection) {
     console.error("Could not load the patch's custom view", error);
     elements.openPlugin.disabled = false;
     openFloatingParameters();
+    showDiagnostic("error", "Custom UI failed to load", error instanceof Error ? error.message : String(error));
   }
 }
 
@@ -2220,6 +2385,7 @@ function parseDiagnostics(message, doc, activePath) {
 function showDiagnostic(kind, title, detail) {
   if (!elements.diagnosticOutput) return;
   elements.diagnosticOutput.hidden = kind === "success";
+  elements.diagnosticOutput.title = `${title}: ${detail}`;
   elements.diagnosticOutput.className = `diagnostic-output ${kind}`;
   elements.diagnosticOutput.replaceChildren(Object.assign(document.createElement("strong"), { textContent: title }), Object.assign(document.createElement("span"), { textContent: detail }));
 }
@@ -2587,10 +2753,13 @@ async function openGitHubProject(project) {
 async function publishProjectFiles(entries) {
   if (!await projectFileService) return null;
   if (!navigator.serviceWorker.controller) {
-    await Promise.race([
-      new Promise((resolve) => navigator.serviceWorker.addEventListener("controllerchange", resolve, { once: true })),
-      new Promise((resolve) => setTimeout(resolve, 1000)),
-    ]);
+    await new Promise((resolve) => {
+      const timer = setTimeout(resolve, 15000);
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        clearTimeout(timer);
+        resolve();
+      }, { once: true });
+    });
   }
   if (!navigator.serviceWorker.controller) return null;
 

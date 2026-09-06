@@ -25,10 +25,19 @@ class SimpleFMSynthView extends HTMLElement
                 main {
                     height: 100%;
                     overflow: hidden;
-                    padding: 10px 18px;
+                    border: 1px solid var(--edge, #4a5050);
                     background: var(--panel, #121414);
                 }
-                .controls { display: grid; }
+                header {
+                    height: 18px;
+                    padding: 3px 8px 0;
+                    border-bottom: 1px solid var(--rule, #343838);
+                    color: var(--ink, #eeeeea);
+                    font-size: 10px;
+                    letter-spacing: 0.08em;
+                    text-transform: uppercase;
+                }
+                .controls { display: grid; padding: 0 17px; }
                 label {
                     display: grid;
                     grid-template-columns: 1fr auto;
@@ -49,6 +58,7 @@ class SimpleFMSynthView extends HTMLElement
                 }
             </style>
             <main>
+                <header>Simple FM</header>
                 <section class="controls"></section>
             </main>`;
 

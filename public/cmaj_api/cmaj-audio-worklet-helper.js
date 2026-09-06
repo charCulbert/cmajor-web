@@ -239,6 +239,7 @@ function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
             this.midiTimelineFrames = midiEventBuffer ? new Float64Array (this.midiEventCapacity) : undefined;
             this.midiTimelineMessages = midiEventBuffer ? new Uint32Array (this.midiEventCapacity) : undefined;
             this.midiTimelineCount = 0;
+            this.midiEventGeneration = this.midiEventHeader ? Atomics.load (this.midiEventHeader, 3) : 0;
 
             if (this.cpuTimerView)
             {
@@ -403,6 +404,14 @@ function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
                     {
                         renderFrames (input, output, 0, blockSize);
                         return;
+                    }
+
+                    const generation = Atomics.load (this.midiEventHeader, 3);
+                    if (generation !== this.midiEventGeneration)
+                    {
+                        this.midiEventGeneration = generation;
+                        this.midiTimelineCount = 0;
+                        Atomics.store (this.midiEventHeader, 1, Atomics.load (this.midiEventHeader, 0));
                     }
 
                     // SharedEventQueue-compatible SPSC records: target frame, sequence, packed MIDI.
@@ -905,6 +914,16 @@ export class AudioWorkletPatchConnection extends PatchConnection
         this.midiEventData.setUint32 (record + 8, this.midiEventSequence++ >>> 0, true);
         this.midiEventData.setUint32 (record + 12, shortMIDICode >>> 0, true);
         Atomics.store (this.midiEventHeader, 0, next);
+        return true;
+    }
+
+    /** Discards MIDI events that have been queued for future audio frames.
+     *  This is useful when stopping a lookahead transport. Events already rendered cannot be recalled.
+     */
+    clearScheduledMIDIInputEvents()
+    {
+        if (! this.midiEventHeader) return false;
+        Atomics.add (this.midiEventHeader, 3, 1);
         return true;
     }
 
