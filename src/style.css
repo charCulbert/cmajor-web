@@ -243,6 +243,10 @@ h1 { margin: 0; color: var(--ink); font-size: 1.455rem; font-weight: 400; letter
 .input-source-controls > span, .input-status { color: var(--dim); font-size: 0.818rem; }
 .input-source-controls compost-piano { width: 100%; --compost-piano-height: 7rem; color: var(--ink); }
 .input-source-controls select { min-width: 8rem; }
+#wav-controls { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; }
+#wav-input, .wav-info { grid-column: 1 / -1; min-width: 0; width: 100%; }
+#wav-controls button { white-space: nowrap; }
+.wav-info { color: var(--faint); font: 400 0.727rem var(--mono); }
 .input-status { padding: 0 0.727rem 0.727rem; }
 .patch-controls { margin-bottom: 0.909rem; }
 .patch-controls > button { width: 100%; border: 1px solid var(--ghost); border-radius: 0; padding: 0.636rem; }

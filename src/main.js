@@ -83,6 +83,7 @@ let sequencerFrame = 0;
 let sequencerStartedAt = 0;
 let sequencerScheduledThrough = 0;
 let audioInputTarget = null;
+let audioInputChannelCount = 0;
 let mediaInputStream = null;
 let mediaInputNode = null;
 let wavBuffer = null;
@@ -197,7 +198,7 @@ document.querySelector("#app").innerHTML = `
         <div class="input-source-header">
           <label>Audio input
             <select id="audio-source">
-              <option value="impulse">Click impulse</option>
+              <option value="impulse">Single impulse</option>
               <option value="synth">Test synth</option>
               <option value="device">Input device</option>
               <option value="wav">WAV file</option>
@@ -205,7 +206,7 @@ document.querySelector("#app").innerHTML = `
           </label>
           <span id="audio-input-channels"></span>
         </div>
-        <div id="impulse-controls" class="input-source-controls"><button id="fire-impulse" type="button">Send click impulse</button><span>Full-scale, one sample</span></div>
+        <div id="impulse-controls" class="input-source-controls"><button id="fire-impulse" type="button">Send once</button><span>One full-scale sample to every input channel</span></div>
         <div id="synth-controls" class="input-source-controls" hidden>
           <label>Waveform <select id="synth-waveform"><option>sine</option><option>triangle</option><option>sawtooth</option><option>square</option></select></label>
           <compost-piano id="synth-piano" root-note="48" note-count="25" inline></compost-piano>
@@ -219,6 +220,7 @@ document.querySelector("#app").innerHTML = `
           <button id="play-wav" type="button" disabled>Play WAV</button>
           <button id="stop-wav" type="button" disabled>Stop</button>
           <label><input id="loop-wav" type="checkbox"> Loop</label>
+          <span id="wav-info" class="wav-info"></span>
         </div>
         <div id="input-status" class="input-status" role="status">Choose a source for this patch's audio input.</div>
       </section>
@@ -371,7 +373,7 @@ document.querySelector("#app").innerHTML = `
 
 const elements = Object.fromEntries([
   "main-layout", "preview-resizer", "examples", "build", "stop", "volume", "volume-value", "share", "theme", "more", "file-actions", "download", "import", "import-project", "open-github", "file-input", "project-input", "github-dialog", "github-dialog-title", "github-location-fields", "github-location", "github-manifest-fields", "github-manifest", "github-confirm", "start-gate", "start-app",
-  "vim", "auto-check", "new-file", "new-folder", "active-file-name", "file-tree", "explorer-context-menu", "explorer-resizer", "cursor-position", "check-state", "draft-state", "patch-name", "audio-state", "attribution", "audio-input", "audio-source", "audio-input-channels", "impulse-controls", "fire-impulse", "synth-controls", "synth-waveform", "synth-piano", "device-controls", "audio-device", "enable-audio-input", "wav-controls", "wav-input", "play-wav", "stop-wav", "loop-wav", "input-status", "midi-input", "docked-midi-piano", "docked-sequencer", "sequencer-panel", "sequencer-play", "sequencer-bpm", "open-sequencer", "docked-sequencer-editor", "sequencer-editor", "sequencer-window", "floating-sequencer", "floating-sequencer-play", "floating-sequencer-bpm", "midi-device", "open-keyboard", "keyboard-window", "floating-keyboard", "midi-piano", "midi-octave-down", "midi-octave-up", "midi-octave-label", "open-plugin", "patch-window", "floating-view-toggle", "floating-view", "parameters-home", "parameters", "float-meter", "docked-meter", "meter-panel", "meter-window", "floating-meter", "floating-meter-display", "meter", "cpu-meter", "cpu-level", "cpu-bar", "floating-cpu-meter", "floating-cpu-level", "floating-cpu-bar", "float-scope", "docked-scope", "docked-scope-display", "docked-scope-persistence-canvas", "scope-panel", "scope-window", "floating-scope", "scope", "scope-settings-toggle", "scope-settings-menu", "scope-trigger", "scope-trigger-level", "scope-size", "scope-range", "scope-offset", "scope-persistence", "scope-persistence-canvas", "scope-freeze", "scope-duration", "compiler-version", "diagnostic-output", "toast",
+  "vim", "auto-check", "new-file", "new-folder", "active-file-name", "file-tree", "explorer-context-menu", "explorer-resizer", "cursor-position", "check-state", "draft-state", "patch-name", "audio-state", "attribution", "audio-input", "audio-source", "audio-input-channels", "impulse-controls", "fire-impulse", "synth-controls", "synth-waveform", "synth-piano", "device-controls", "audio-device", "enable-audio-input", "wav-controls", "wav-input", "play-wav", "stop-wav", "loop-wav", "wav-info", "input-status", "midi-input", "docked-midi-piano", "docked-sequencer", "sequencer-panel", "sequencer-play", "sequencer-bpm", "open-sequencer", "docked-sequencer-editor", "sequencer-editor", "sequencer-window", "floating-sequencer", "floating-sequencer-play", "floating-sequencer-bpm", "midi-device", "open-keyboard", "keyboard-window", "floating-keyboard", "midi-piano", "midi-octave-down", "midi-octave-up", "midi-octave-label", "open-plugin", "patch-window", "floating-view-toggle", "floating-view", "parameters-home", "parameters", "float-meter", "docked-meter", "meter-panel", "meter-window", "floating-meter", "floating-meter-display", "meter", "cpu-meter", "cpu-level", "cpu-bar", "floating-cpu-meter", "floating-cpu-level", "floating-cpu-bar", "float-scope", "docked-scope", "docked-scope-display", "docked-scope-persistence-canvas", "scope-panel", "scope-window", "floating-scope", "scope", "scope-settings-toggle", "scope-settings-menu", "scope-trigger", "scope-trigger-level", "scope-size", "scope-range", "scope-offset", "scope-persistence", "scope-persistence-canvas", "scope-freeze", "scope-duration", "compiler-version", "diagnostic-output", "toast",
 ].map((id) => [id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()), document.getElementById(id)]));
 
 elements.scopeSize.value = String(preferences.scopeSize);
@@ -737,6 +739,11 @@ elements.enableAudioInput.addEventListener("click", () => mediaInputStream ? dis
 elements.wavInput.addEventListener("change", loadWavFile);
 elements.playWav.addEventListener("click", playWav);
 elements.stopWav.addEventListener("click", () => stopWav(true));
+elements.loopWav.addEventListener("change", () => {
+  if (!wavSource) return;
+  wavSource.loop = elements.loopWav.checked;
+  elements.inputStatus.textContent = elements.loopWav.checked ? "Looping WAV." : "Loop off · finishing the current pass.";
+});
 
 elements.build.addEventListener("click", () => void buildAndPlay());
 elements.stop.addEventListener("click", () => stopAudio(true));
@@ -1948,6 +1955,7 @@ function renderMIDIInput(endpoint, connection) {
 function renderAudioInput(endpoints, connection) {
   stopAudioSources();
   const channels = endpoints.reduce((total, endpoint) => total + (endpoint.numAudioChannels || 0), 0);
+  audioInputChannelCount = channels;
   audioInputTarget = channels && connection ? connection.audioNode : null;
   elements.audioInput.hidden = !audioInputTarget;
   elements.audioInputChannels.textContent = channels ? `${channels} channel${channels === 1 ? "" : "s"}` : "";
@@ -1962,10 +1970,10 @@ function updateAudioInputMode() {
   elements.deviceControls.hidden = mode !== "device";
   elements.wavControls.hidden = mode !== "wav";
   elements.inputStatus.textContent = {
-    impulse: "Send a one-sample impulse to inspect an effect's response.",
+    impulse: "Send one sample once to inspect the effect's response.",
     synth: "Touch the keys or focus the keyboard and use A–K.",
     device: "Permission is requested only when you enable the selected input.",
-    wav: wavBuffer ? `Ready · ${wavBuffer.duration.toFixed(2)} s · ${wavBuffer.numberOfChannels} channel${wavBuffer.numberOfChannels === 1 ? "" : "s"}` : "Choose a WAV file from this device.",
+    wav: wavBuffer ? wavDescription("Ready") : "Choose a WAV file from this device.",
   }[mode];
   if (mode === "device") void populateAudioDevices();
 }
@@ -1986,7 +1994,7 @@ function fireImpulse() {
   source.buffer = buffer;
   source.connect(audioInputTarget);
   source.start();
-  elements.inputStatus.textContent = "Impulse sent.";
+  elements.inputStatus.textContent = "One-sample impulse sent once.";
 }
 
 function startSynthNote(note) {
@@ -2082,12 +2090,26 @@ async function loadWavFile() {
   try {
     wavBuffer = await audioContext.decodeAudioData(await file.arrayBuffer());
     elements.playWav.disabled = false;
-    elements.inputStatus.textContent = `${file.name} · ${wavBuffer.duration.toFixed(2)} s · ${wavBuffer.numberOfChannels} channel${wavBuffer.numberOfChannels === 1 ? "" : "s"}`;
+    elements.wavInfo.textContent = wavRoutingDescription();
+    elements.inputStatus.textContent = wavDescription(file.name);
   } catch {
     wavBuffer = null;
     elements.playWav.disabled = true;
+    elements.wavInfo.textContent = "";
     elements.inputStatus.textContent = "This file could not be decoded as WAV audio.";
   }
+}
+
+function wavRoutingDescription() {
+  const channels = wavBuffer?.numberOfChannels || 0;
+  if (channels === 1 && audioInputChannelCount > 1) return `Mono WAV · copied to all ${audioInputChannelCount} patch inputs`;
+  return `${channels}-channel WAV · channels preserved`;
+}
+
+function wavDescription(label) {
+  const channels = wavBuffer?.numberOfChannels || 0;
+  const routing = channels === 1 && audioInputChannelCount > 1 ? ` · mono copied to all ${audioInputChannelCount} patch inputs` : "";
+  return `${label} · ${wavBuffer.duration.toFixed(2)} s · ${channels} channel${channels === 1 ? "" : "s"}${routing}`;
 }
 
 function playWav() {
@@ -2098,7 +2120,14 @@ function playWav() {
   wavSource.buffer = wavBuffer;
   wavSource.loop = elements.loopWav.checked;
   wavSource.connect(audioInputTarget);
-  wavSource.addEventListener("ended", () => { if (wavSource) stopWav(); });
+  const source = wavSource;
+  source.addEventListener("ended", () => {
+    if (wavSource !== source) return;
+    wavSource = null;
+    elements.playWav.disabled = false;
+    elements.stopWav.disabled = true;
+    elements.inputStatus.textContent = "WAV finished.";
+  });
   wavSource.start();
   elements.playWav.disabled = true;
   elements.stopWav.disabled = false;
@@ -2106,11 +2135,12 @@ function playWav() {
 }
 
 function stopWav(updateStatus = false) {
-  if (wavSource) {
-    try { wavSource.stop(); } catch { /* already stopped */ }
-    try { wavSource.disconnect(); } catch { /* already disconnected */ }
-  }
+  const source = wavSource;
   wavSource = null;
+  if (source) {
+    try { source.stop(); } catch { /* already stopped */ }
+    try { source.disconnect(); } catch { /* already disconnected */ }
+  }
   if (elements.playWav) elements.playWav.disabled = !wavBuffer;
   if (elements.stopWav) elements.stopWav.disabled = true;
   if (updateStatus) elements.inputStatus.textContent = "WAV stopped.";
