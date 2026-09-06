@@ -16,6 +16,7 @@ import "compost/components/compost-number-box";
 import "compost/components/compost-piano";
 import "compost/components/compost-scope";
 import "compost/components/compost-window";
+import { compileCacheKey, readCompiledResult, writeCompiledResult } from "./compile-cache.js";
 import { examples, manifestFor } from "./examples.js";
 import {
   discoverGitHubProject,
@@ -1649,19 +1650,26 @@ function resetCompilerWorker(message, failedWorker = compiler) {
   }
 }
 
-function compile(files, id, purpose = "build") {
-  return new Promise((resolve) => {
+async function compile(files, id, purpose = "build") {
+  const requestedManifestPath = manifestPath;
+  const resourceRoot = activeExample?.resourceRoot
+    ? new URL(activeExample.resourceRoot, location.href).href
+    : projectResourceRoot;
+  const cacheKey = await compileCacheKey(files, requestedManifestPath);
+  const cached = await readCompiledResult(cacheKey);
+  if (cached) return { id, purpose, ok: true, ...cached };
+
+  const result = await new Promise((resolve) => {
     if (!compiler) compiler = createCompilerWorker();
     const key = `${purpose}:${id}`;
     const timer = setTimeout(() => {
       resetCompilerWorker("Compilation exceeded two minutes and the compiler Worker was restarted.", compiler);
     }, COMPILER_TIMEOUT);
     compilerRequests.set(key, { id, purpose, resolve, timer });
-    const resourceRoot = activeExample?.resourceRoot
-      ? new URL(activeExample.resourceRoot, location.href).href
-      : projectResourceRoot;
-    compiler.postMessage({ id, purpose, files, manifestPath, resourceRoot });
+    compiler.postMessage({ id, purpose, files, manifestPath: requestedManifestPath, resourceRoot });
   });
+  if (result.ok && result.code) await writeCompiledResult(cacheKey, result);
+  return result;
 }
 
 function scheduleAutoCheck() {
@@ -1803,14 +1811,14 @@ async function buildAndPlay(preparedAudio = null) {
     renderParameters(next.inputEndpoints.filter(({ purpose }) => purpose === "parameter"), next);
     renderMIDIInput(next.inputEndpoints.find(({ purpose }) => purpose === "midi in"), next);
     renderAudioInput(next.inputEndpoints.filter(({ purpose }) => purpose === "audio in"), next);
-    await renderCustomView(activeExample, next);
+    await renderCustomView(activeExample, next, id);
     elements.stop.disabled = false;
     elements.audioState.textContent = "Playing";
     elements.audioState.classList.add("playing");
     const playbackTime = performance.now() - playbackStarted;
     elements.checkState.textContent = `Built · ${compileTime.toFixed(0)} ms`;
-    showDiagnostic("success", "Build succeeded", `Worker compile ${compileTime.toFixed(0)} ms · AudioWorklet start ${playbackTime.toFixed(0)} ms.`);
-    window.__lastBuildTiming = { compileTime, playbackTime, exampleID: activeExample?.id || "edited" };
+    showDiagnostic("success", "Build succeeded", `${result.cached ? "Cached DSP" : "Worker compile"} ${compileTime.toFixed(0)} ms · AudioWorklet start ${playbackTime.toFixed(0)} ms.`);
+    window.__lastBuildTiming = { compileTime, playbackTime, cached: Boolean(result.cached), exampleID: activeExample?.id || "edited" };
     startMeter();
     startCPUSample();
   } catch (error) {
@@ -2146,7 +2154,7 @@ function stopWav(updateStatus = false) {
   if (updateStatus) elements.inputStatus.textContent = "WAV stopped.";
 }
 
-async function renderCustomView(example, connection) {
+async function renderCustomView(example, connection, buildID) {
   clearCustomView();
   const manifest = projectManifest();
   const root = example?.resourceRoot ? new URL(example.resourceRoot, location.href).href : projectResourceRoot;
@@ -2160,7 +2168,16 @@ async function renderCustomView(example, connection) {
 
   try {
     const { default: createPatchView } = await import(/* @vite-ignore */ viewURL);
-    const view = await createPatchView(connection);
+    let view;
+    let viewError;
+    for (let attempt = 0; attempt < 2 && !view; ++attempt) {
+      if (attempt) await new Promise((resolve) => setTimeout(resolve, 250));
+      if (connection !== activeConnection || buildID !== requestID) return;
+      try { view = await createPatchView(connection); }
+      catch (error) { viewError = error; }
+    }
+    if (connection !== activeConnection || buildID !== requestID) return;
+    if (!(view instanceof HTMLElement)) throw viewError || new Error("The custom UI did not create a view.");
     const { width = 500, height = 320, resizable = true } = manifest.view;
     elements.patchWindow.heading = `${manifest.name || "Patch"} · Patch UI`;
     elements.patchWindow.dataset.preferredWidth = String(width);

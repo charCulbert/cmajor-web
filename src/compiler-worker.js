@@ -21,7 +21,7 @@ async function compile(data) {
     for (const { path, content } of preparedFiles) compiler.addSourceFile(path, content);
     self.postMessage({ type: "stage", id, purpose, stage: "Generating DSP" });
     const code = await compiler.createJavascriptCode();
-    self.postMessage({ id, purpose, ok: true, code: purpose === "build" ? code : undefined, version: compiler.CmajorVersion });
+    self.postMessage({ id, purpose, ok: true, code, version: compiler.CmajorVersion });
   } catch (error) {
     self.postMessage({ id, purpose, ok: false, error: error instanceof Error ? error.message : String(error) });
   }
