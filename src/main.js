@@ -1290,7 +1290,7 @@ function compilerProjectFiles() {
   return [
     { path: manifestPath, content: manifest },
     ...projectSourceFiles(),
-    ...projectAssetFiles,
+    ...projectAssetFiles.filter(({ path }) => !path.endsWith(".cmajorpatch")),
   ];
 }
 
