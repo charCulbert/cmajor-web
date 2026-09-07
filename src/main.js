@@ -49,6 +49,7 @@ const editableCompartment = new Compartment();
 const AUTO_CHECK_DELAY = 1000;
 const AUTO_CHECK_SOURCE_LIMIT = 512 * 1024;
 const MAX_PROJECT_BYTES = 100 * 1024 * 1024;
+const MAX_PROJECT_SIZE_LABEL = "100 MiB";
 const PROJECT_DRAG_TYPE = "application/x-cmajor-project-path";
 let requestID = 0;
 let checkID = 0;
@@ -2167,11 +2168,23 @@ async function renderCustomView(example, connection, buildID) {
   }
 
   try {
-    const { default: createPatchView } = await import(/* @vite-ignore */ viewURL);
-    let view;
+    let createPatchView;
     let viewError;
-    for (let attempt = 0; attempt < 2 && !view; ++attempt) {
-      if (attempt) await new Promise((resolve) => setTimeout(resolve, 250));
+    for (let attempt = 0; attempt < 3 && !createPatchView; ++attempt) {
+      if (attempt) await new Promise((resolve) => setTimeout(resolve, attempt * 300));
+      if (connection !== activeConnection || buildID !== requestID) return;
+      try {
+        const retryURL = new URL(viewURL);
+        if (attempt) retryURL.searchParams.set("cmajor_ui_retry", String(attempt));
+        ({ default: createPatchView } = await import(/* @vite-ignore */ retryURL.href));
+      } catch (error) {
+        viewError = error;
+      }
+    }
+    if (typeof createPatchView !== "function") throw viewError || new Error("The custom UI module has no view factory.");
+    let view;
+    for (let attempt = 0; attempt < 3 && !view; ++attempt) {
+      if (attempt) await new Promise((resolve) => setTimeout(resolve, attempt * 300));
       if (connection !== activeConnection || buildID !== requestID) return;
       try { view = await createPatchView(connection); }
       catch (error) { viewError = error; }
@@ -2539,7 +2552,14 @@ async function importDroppedItems(dataTransfer) {
   if (!itemEntries.length) {
     const files = [...(dataTransfer?.files || [])];
     if (files.length === 1 && /\.(?:cmajor|json)$/i.test(files[0].name)) return importSourceFile(files[0]);
-    return importDroppedFiles(files);
+    try {
+      return await importDroppedFiles(files);
+    } catch (error) {
+      const message = error?.message || "The dropped items could not be read.";
+      showDiagnostic("error", "Drop import failed", message);
+      toast(`Could not import drop: ${message}`, "error");
+      return;
+    }
   }
 
   if (itemEntries.length === 1 && itemEntries[0].isFile && /\.(?:cmajor|json)$/i.test(itemEntries[0].name)) {
@@ -2555,13 +2575,21 @@ async function importDroppedItems(dataTransfer) {
     if (hasCommonRoot) entries.forEach((entry) => { entry.path = entry.path.slice(firstPart.length + 1); });
     await loadProjectEntries(entries);
   } catch (error) {
-    showDiagnostic("error", "Drop import failed", error?.message || "The dropped items could not be read.");
+    const message = error?.message || "The dropped items could not be read.";
+    showDiagnostic("error", "Drop import failed", message);
+    toast(`Could not import drop: ${message}`, "error");
   }
 }
 
 async function importDroppedFiles(files) {
   if (files.length === 1 && /\.(?:cmajor|json)$/i.test(files[0].name)) return importSourceFile(files[0]);
-  const entries = await Promise.all(files.map(async (file) => ({ path: file.webkitRelativePath || file.name, bytes: new Uint8Array(await file.arrayBuffer()) })));
+  const entries = [];
+  let totalSize = 0;
+  for (const file of files) {
+    totalSize += file.size;
+    if (totalSize > MAX_PROJECT_BYTES) throw new Error(`The dropped project exceeds the ${MAX_PROJECT_SIZE_LABEL} in-browser limit.`);
+    entries.push({ path: file.webkitRelativePath || file.name, bytes: new Uint8Array(await file.arrayBuffer()) });
+  }
   await loadProjectEntries(entries);
 }
 
@@ -2578,7 +2606,7 @@ async function readDroppedEntry(entry, parentPath, entries, state) {
   if (entry.isFile) {
     const file = await droppedEntryFile(entry);
     state.size += file.size;
-    if (state.size > MAX_PROJECT_BYTES) throw new Error("The dropped project exceeds the 100 MiB in-browser limit.");
+    if (state.size > MAX_PROJECT_BYTES) throw new Error(`The dropped project exceeds the ${MAX_PROJECT_SIZE_LABEL} in-browser limit.`);
     entries.push({ path, bytes: new Uint8Array(await file.arrayBuffer()) });
     return;
   }
@@ -2596,17 +2624,22 @@ async function importProjectFolder() {
   elements.projectInput.value = "";
   if (!selected.length) return;
   if (selected.reduce((size, file) => size + file.size, 0) > MAX_PROJECT_BYTES) {
-    showDiagnostic("error", "Project import refused", "The selected project exceeds the 100 MiB in-browser limit.");
+    const message = `The selected project exceeds the ${MAX_PROJECT_SIZE_LABEL} in-browser limit.`;
+    showDiagnostic("error", "Project import refused", message);
+    toast(`Could not open project: ${message}`, "error");
     return;
   }
   const browserPaths = selected.map((file) => file.webkitRelativePath || file.name);
   const root = browserPaths[0].split("/")[0];
   const hasCommonRoot = browserPaths.every((path) => path.startsWith(`${root}/`));
-  const entries = await Promise.all(selected.map(async (file, index) => ({
-    path: hasCommonRoot ? browserPaths[index].slice(root.length + 1) : browserPaths[index],
-    file,
-    bytes: new Uint8Array(await file.arrayBuffer()),
-  })));
+  const entries = [];
+  for (const [index, file] of selected.entries()) {
+    entries.push({
+      path: hasCommonRoot ? browserPaths[index].slice(root.length + 1) : browserPaths[index],
+      file,
+      bytes: new Uint8Array(await file.arrayBuffer()),
+    });
+  }
   await loadProjectEntries(entries);
 }
 
@@ -2649,7 +2682,9 @@ async function openProjectFolder() {
     await loadProjectEntries(entries);
   } catch (error) {
     if (error?.name === "AbortError") return;
-    showDiagnostic("error", "Project import failed", error?.message || "The selected folder could not be read.");
+    const message = error?.message || "The selected folder could not be read.";
+    showDiagnostic("error", "Project import failed", message);
+    toast(`Could not open project: ${message}`, "error");
   }
 }
 
@@ -2663,7 +2698,7 @@ async function readDirectoryEntries(directory, parentPath, entries, state) {
     if (handle.kind !== "file") continue;
     const file = await handle.getFile();
     state.size += file.size;
-    if (state.size > MAX_PROJECT_BYTES) throw new Error("The selected project exceeds the 100 MiB in-browser limit.");
+    if (state.size > MAX_PROJECT_BYTES) throw new Error(`The selected project exceeds the ${MAX_PROJECT_SIZE_LABEL} in-browser limit.`);
     entries.push({ path, file, bytes: new Uint8Array(await file.arrayBuffer()) });
   }
 }
@@ -2675,7 +2710,7 @@ async function loadProjectEntries(entries, { example = null, selectedManifest = 
   }
   const totalSize = entries.reduce((size, entry) => size + entry.bytes.byteLength, 0);
   if (totalSize > MAX_PROJECT_BYTES) {
-    showDiagnostic("error", "Project import refused", "The selected project exceeds the 100 MiB in-browser limit.");
+    showDiagnostic("error", "Project import refused", `The selected project exceeds the ${MAX_PROJECT_SIZE_LABEL} in-browser limit.`);
     return false;
   }
   if (entries.some(({ path }) => !isSafeProjectPath(path))) {
@@ -2769,6 +2804,7 @@ function showProjectDialog(mode, { title, manifests = [], initialValue = "" } = 
   elements.githubDialogTitle.textContent = title;
   elements.githubLocationFields.hidden = mode !== "location";
   elements.githubManifestFields.hidden = mode !== "manifest";
+  elements.githubLocation.required = mode === "location";
   elements.githubConfirm.textContent = mode === "location" ? "Find patches" : "Open patch";
   if (mode === "location") elements.githubLocation.value = initialValue;
   else elements.githubManifest.replaceChildren(...manifests.map((path) => new Option(path, path)));
@@ -2864,10 +2900,10 @@ async function publishProjectFiles(entries) {
     ".jpeg": "image/jpeg",
     ".wav": "audio/wav",
   })[path.slice(path.lastIndexOf(".")).toLowerCase()] || "application/octet-stream";
-  await Promise.all(entries.map(({ path, bytes }) => {
+  for (const { path, bytes } of entries) {
     const url = new URL(path.split("/").map(encodeURIComponent).join("/"), root);
-    return cache.put(url, new Response(bytes, { headers: { "content-type": contentType(path) } }));
-  }));
+    await cache.put(url, new Response(bytes, { headers: { "content-type": contentType(path) } }));
+  }
   return root.href;
 }
 

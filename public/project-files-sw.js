@@ -7,7 +7,14 @@ self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
 self.addEventListener("fetch", (event) => {
   if (event.request.cache === "only-if-cached" && event.request.mode !== "same-origin") return;
-  event.respondWith(handleRequest(event));
+  event.respondWith(handleRequest(event).catch(() => new Response("Network request failed", {
+    status: 503,
+    headers: {
+      "content-type": "text/plain;charset=utf-8",
+      "Cross-Origin-Embedder-Policy": "require-corp",
+      "Cross-Origin-Opener-Policy": "same-origin",
+    },
+  })));
 });
 
 async function handleRequest(event) {
@@ -17,7 +24,7 @@ async function handleRequest(event) {
 
   if (url.origin === self.location.origin && url.pathname.startsWith(PROJECT_PREFIX)) {
     const cache = await caches.open(CACHE_NAME);
-    response = await cache.match(request) || new Response("Project file not found", { status: 404 });
+    response = await cache.match(request, { ignoreSearch: true }) || new Response("Project file not found", { status: 404 });
   } else if (url.origin === self.location.origin && url.pathname.startsWith(COMPILER_ASSET_PREFIX)) {
     const cache = await caches.open(COMPILER_ASSET_CACHE);
     response = await cache.match(request);
