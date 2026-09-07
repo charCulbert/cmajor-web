@@ -349,6 +349,13 @@ document.querySelector("#app").innerHTML = `
     <button type="button" role="menuitem" data-action="rename">Rename</button>
     <button type="button" role="menuitem" data-action="delete" class="danger">Delete</button>
   </div>
+  <dialog id="diagnostic-dialog" class="project-dialog diagnostic-dialog">
+    <form method="dialog">
+      <header><h2 id="diagnostic-dialog-title">Compiler output</h2><button value="close" aria-label="Close">×</button></header>
+      <pre id="diagnostic-details"></pre>
+      <footer><button value="close">Close</button></footer>
+    </form>
+  </dialog>
   <dialog id="github-dialog" class="project-dialog">
     <form method="dialog">
       <header><h2 id="github-dialog-title">Open GitHub project</h2><button value="cancel" aria-label="Close">×</button></header>
@@ -374,7 +381,7 @@ document.querySelector("#app").innerHTML = `
   <div id="toast" role="status" aria-live="polite"></div>`;
 
 const elements = Object.fromEntries([
-  "main-layout", "preview-resizer", "examples", "build", "stop", "volume", "volume-value", "share", "theme", "more", "file-actions", "download", "import", "import-project", "open-github", "file-input", "project-input", "github-dialog", "github-dialog-title", "github-location-fields", "github-location", "github-manifest-fields", "github-manifest", "github-confirm", "start-gate", "start-app",
+  "main-layout", "preview-resizer", "examples", "build", "stop", "volume", "volume-value", "share", "theme", "more", "file-actions", "download", "import", "import-project", "open-github", "file-input", "project-input", "diagnostic-dialog", "diagnostic-dialog-title", "diagnostic-details", "github-dialog", "github-dialog-title", "github-location-fields", "github-location", "github-manifest-fields", "github-manifest", "github-confirm", "start-gate", "start-app",
   "vim", "auto-check", "new-file", "new-folder", "active-file-name", "file-tree", "explorer-context-menu", "explorer-resizer", "cursor-position", "check-state", "draft-state", "patch-name", "audio-state", "attribution", "audio-input", "audio-source", "audio-input-channels", "impulse-controls", "fire-impulse", "synth-controls", "synth-waveform", "synth-piano", "device-controls", "audio-device", "enable-audio-input", "wav-controls", "wav-input", "play-wav", "stop-wav", "loop-wav", "wav-info", "input-status", "midi-input", "docked-midi-piano", "docked-sequencer", "sequencer-panel", "sequencer-play", "sequencer-bpm", "open-sequencer", "docked-sequencer-editor", "sequencer-editor", "sequencer-window", "floating-sequencer", "floating-sequencer-play", "floating-sequencer-bpm", "midi-device", "open-keyboard", "keyboard-window", "floating-keyboard", "midi-piano", "midi-octave-down", "midi-octave-up", "midi-octave-label", "open-plugin", "patch-window", "floating-view-toggle", "floating-view", "parameters-home", "parameters", "float-meter", "docked-meter", "meter-panel", "meter-window", "floating-meter", "floating-meter-display", "meter", "cpu-meter", "cpu-level", "cpu-bar", "floating-cpu-meter", "floating-cpu-level", "floating-cpu-bar", "float-scope", "docked-scope", "docked-scope-display", "docked-scope-persistence-canvas", "scope-panel", "scope-window", "floating-scope", "scope", "scope-settings-toggle", "scope-settings-menu", "scope-trigger", "scope-trigger-level", "scope-size", "scope-range", "scope-offset", "scope-persistence", "scope-persistence-canvas", "scope-freeze", "scope-duration", "compiler-version", "diagnostic-output", "toast",
 ].map((id) => [id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()), document.getElementById(id)]));
 
@@ -1308,6 +1315,10 @@ function isSafeProjectPath(path) {
   const parts = path.split("/");
   return path.length <= 512 && !path.startsWith("/") && !/[\\\u0000-\u001f\u007f]/.test(path)
     && parts.every((part) => part && part !== "." && part !== "..");
+}
+
+function isIgnoredLocalProjectPath(path) {
+  return path.split("/").includes(".git");
 }
 
 function beginExplorerEdit(kind, parentPath = "", oldPath = null) {
@@ -2479,10 +2490,24 @@ function parseDiagnostics(message, doc, activePath) {
 
 function showDiagnostic(kind, title, detail) {
   if (!elements.diagnosticOutput) return;
+  const detailText = String(detail ?? "");
   elements.diagnosticOutput.hidden = kind === "success";
-  elements.diagnosticOutput.title = `${title}: ${detail}`;
+  elements.diagnosticOutput.title = `${title}: ${detailText}`;
   elements.diagnosticOutput.className = `diagnostic-output ${kind}`;
-  elements.diagnosticOutput.replaceChildren(Object.assign(document.createElement("strong"), { textContent: title }), Object.assign(document.createElement("span"), { textContent: detail }));
+  const children = [
+    Object.assign(document.createElement("strong"), { textContent: title }),
+    Object.assign(document.createElement("span"), { textContent: detailText }),
+  ];
+  if (kind === "error" && detailText) {
+    const details = Object.assign(document.createElement("button"), { type: "button", className: "diagnostic-details-button", textContent: "Details" });
+    details.addEventListener("click", () => {
+      elements.diagnosticDialogTitle.textContent = title;
+      elements.diagnosticDetails.textContent = detailText;
+      elements.diagnosticDialog.showModal();
+    });
+    children.push(details);
+  }
+  elements.diagnosticOutput.replaceChildren(...children);
 }
 
 async function shareProject() {
@@ -2586,9 +2611,11 @@ async function importDroppedFiles(files) {
   const entries = [];
   let totalSize = 0;
   for (const file of files) {
+    const path = file.webkitRelativePath || file.name;
+    if (isIgnoredLocalProjectPath(path)) continue;
     totalSize += file.size;
     if (totalSize > MAX_PROJECT_BYTES) throw new Error(`The dropped project exceeds the ${MAX_PROJECT_SIZE_LABEL} in-browser limit.`);
-    entries.push({ path: file.webkitRelativePath || file.name, bytes: new Uint8Array(await file.arrayBuffer()) });
+    entries.push({ path, bytes: new Uint8Array(await file.arrayBuffer()) });
   }
   await loadProjectEntries(entries);
 }
@@ -2603,6 +2630,7 @@ function droppedDirectoryBatch(reader) {
 
 async function readDroppedEntry(entry, parentPath, entries, state) {
   const path = parentPath ? `${parentPath}/${entry.name}` : entry.name;
+  if (isIgnoredLocalProjectPath(path)) return;
   if (entry.isFile) {
     const file = await droppedEntryFile(entry);
     state.size += file.size;
@@ -2620,7 +2648,8 @@ async function readDroppedEntry(entry, parentPath, entries, state) {
 }
 
 async function importProjectFolder() {
-  const selected = [...(elements.projectInput.files || [])];
+  const selected = [...(elements.projectInput.files || [])]
+    .filter((file) => !isIgnoredLocalProjectPath(file.webkitRelativePath || file.name));
   elements.projectInput.value = "";
   if (!selected.length) return;
   if (selected.reduce((size, file) => size + file.size, 0) > MAX_PROJECT_BYTES) {
@@ -2691,6 +2720,7 @@ async function openProjectFolder() {
 async function readDirectoryEntries(directory, parentPath, entries, state) {
   for await (const handle of directory.values()) {
     const path = parentPath ? `${parentPath}/${handle.name}` : handle.name;
+    if (isIgnoredLocalProjectPath(path)) continue;
     if (handle.kind === "directory") {
       await readDirectoryEntries(handle, path, entries, state);
       continue;
@@ -2724,6 +2754,7 @@ async function loadProjectEntries(entries, { example = null, selectedManifest = 
     return false;
   }
 
+  const choseManifest = manifests.length > 1;
   if (!selectedManifest && manifests.length > 1) {
     selectedManifest = await chooseProjectManifest(manifests.map(({ path }) => path), "Choose a Cmajor patch");
     if (!selectedManifest) return false;
@@ -2780,7 +2811,8 @@ async function loadProjectEntries(entries, { example = null, selectedManifest = 
   elements.attribution.textContent = attribution || example?.attribution || `Local project · ${entries.length} files · paths preserved verbatim.`;
   elements.fileActions.hidden = true;
   renderFileTree();
-  await openProjectFile(projectFiles().find(({ path }) => path === sourcePaths[0]));
+  await openProjectFile(projectFiles().find(({ path }) => path === (choseManifest ? manifestPath : sourcePaths[0])));
+  if (choseManifest) editor.focus();
   saveDraft();
   scheduleAutoCheck();
   showDiagnostic("success", example ? `${example.name} loaded` : "Project loaded", `${manifestPath} and ${entries.length - 1} project files are ready for in-browser compilation.`);
