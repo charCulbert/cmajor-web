@@ -1040,6 +1040,7 @@ function showFloatingPatchTab(tab) {
   const showUI = tab === "ui";
   const frame = elements.floatingView.querySelector(".patch-view-frame");
   if (showUI && !frame) return;
+  applyPatchWindowBounds(showUI);
   if (showUI) {
     dockParameters();
     if (frame) frame.hidden = false;
@@ -2205,22 +2206,32 @@ async function renderCustomView(example, connection, buildID) {
     if (connection !== activeConnection || buildID !== requestID) return;
     if (!(view instanceof HTMLElement)) throw viewError || new Error("The custom UI did not create a view.");
     const { width = 500, height = 320, resizable = true } = manifest.view;
+    // The view's own scale limits (what cmaj_api scales by) bound the window, so it can never
+    // be dragged to where the view is cut off; the aspect ratio stays that of the view.
+    const limits = view.getScaleFactorLimits?.() ?? {};
+    const minScale = Number(limits.minScale) > 0 ? Number(limits.minScale) : 1;
+    const maxScale = Number(limits.maxScale) > 0 ? Number(limits.maxScale) : 1;
     elements.patchWindow.heading = `${manifest.name || "Patch"} · Patch UI`;
     elements.patchWindow.dataset.preferredWidth = String(width);
     elements.patchWindow.dataset.preferredHeight = String(height);
     elements.patchWindow.setAttribute("width", String(width));
     elements.patchWindow.setAttribute("height", String(height));
-    elements.patchWindow.setAttribute("resizable", resizable ? "both" : "none");
+    elements.patchWindow.dataset.minScale = String(minScale);
+    elements.patchWindow.dataset.maxScale = String(maxScale);
+    elements.patchWindow.dataset.viewResizable = String(resizable && maxScale > minScale);
+    applyPatchWindowBounds(true);
     const frame = document.createElement("div");
     frame.className = "patch-view-frame";
     frame.append(view);
     elements.floatingView.append(frame);
     resizePatchView = () => {
       const host = frame.parentElement;
-      if (!host) return;
-      const scale = Math.min(1, host.clientWidth / width);
+      if (!host || !host.clientWidth || !host.clientHeight) return;
+      const scale = Math.min(Math.max(Math.min(host.clientWidth / width, host.clientHeight / height), minScale), maxScale);
       frame.style.width = `${width * scale}px`;
       frame.style.height = `${height * scale}px`;
+      frame.style.marginLeft = `${Math.max(0, (host.clientWidth - width * scale) / 2)}px`;
+      frame.style.marginTop = `${Math.max(0, (host.clientHeight - height * scale) / 2)}px`;
       view.style.width = `${width}px`;
       view.style.height = `${height}px`;
       view.style.transform = `scale(${scale})`;
@@ -2238,7 +2249,25 @@ async function renderCustomView(example, connection, buildID) {
   }
 }
 
+/** The custom UI tab keeps the window within the view's scale range and aspect ratio; the parameters tab is free. */
+function applyPatchWindowBounds(on) {
+  const width = Number(elements.patchWindow.dataset.preferredWidth), height = Number(elements.patchWindow.dataset.preferredHeight);
+  const minScale = Number(elements.patchWindow.dataset.minScale) || 1, maxScale = Number(elements.patchWindow.dataset.maxScale) || 1;
+  if (on && width && height) {
+    elements.patchWindow.setAttribute("min-width", String(Math.round(width * minScale)));
+    elements.patchWindow.setAttribute("min-height", String(Math.round(height * minScale)));
+    elements.patchWindow.setAttribute("max-width", String(Math.round(width * maxScale)));
+    elements.patchWindow.setAttribute("max-height", String(Math.round(height * maxScale)));
+    elements.patchWindow.setAttribute("aspect-ratio", `${width}/${height}`);
+    elements.patchWindow.setAttribute("resizable", elements.patchWindow.dataset.viewResizable === "true" ? "both" : "none");
+  } else {
+    for (const attribute of ["min-width", "min-height", "max-width", "max-height", "aspect-ratio"]) elements.patchWindow.removeAttribute(attribute);
+    elements.patchWindow.setAttribute("resizable", "both");
+  }
+}
+
 function clearCustomView() {
+  applyPatchWindowBounds(false);
   patchViewResizeObserver?.disconnect();
   patchViewResizeObserver = null;
   resizePatchView = null;
