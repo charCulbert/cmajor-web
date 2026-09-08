@@ -57,7 +57,7 @@ async function presentSession(session) {
   startPatchWorker(connection).catch((error) => showError(`The patch worker failed: ${error.message}`));
   const mounted = await mountPatchView(viewContainer, connection, 'custom');
   if (mounted.error) showError(`The patch GUI could not be loaded (${mounted.error.message}); showing the generic view`);
-  send({ t: 'resize', w: Math.round(mounted.width), h: Math.round(mounted.height + (strip.hidden ? 0 : 50)) });
+  send({ t: 'resize', w: Math.round(mounted.width), h: Math.round(mounted.height + (strip.hidden ? 0 : 50)), lock: mounted.lockAspect === true });
   pollTimer = setInterval(() => send({ t: 'poll' }), pollIntervalMs);
 }
 

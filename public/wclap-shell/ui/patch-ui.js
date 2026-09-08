@@ -268,27 +268,39 @@ export async function mountPatchView(container, connection, type = 'custom') {
       const custom = await viewModule?.default?.(connection);
       if (!custom) throw new Error('The view module returned nothing');
       custom.style.display = 'block';
-      const width = view.width > 10 ? view.width : 500, height = view.height > 10 ? view.height : 400;
-      custom.style.width = `${width}px`;
-      custom.style.height = `${height}px`;
-      // Like the native Cmajor plug-in: scale the view to fill the window, keeping its aspect ratio.
+      const fixed = view.width > 10 && view.height > 10;
+      const limits = custom.getScaleFactorLimits?.();
+      const width = fixed ? view.width : 500, height = fixed ? view.height : 400;
       element = document.createElement('div');
       element.className = 'cmaj-scaled-view';
       element.style.cssText = 'display:block;width:100%;height:100%;position:relative;overflow:hidden;';
-      custom.style.position = 'absolute';
-      custom.style.transformOrigin = '0 0';
-      const fit = () => {
-        const w = element.clientWidth, h = element.clientHeight;
-        if (!w || !h) return;
-        const scale = Math.min(w / width, h / height);
-        custom.style.transform = `scale(${scale})`;
-        custom.style.left = `${Math.round((w - width * scale) / 2)}px`;
-        custom.style.top = `${Math.round((h - height * scale) / 2)}px`;
-      };
-      element.appendChild(custom);
-      new ResizeObserver(fit).observe(element);
-      fit();
-      result = { type: 'custom', width, height };
+      if (fixed) {
+        // A fixed-size view: scale it to fill the window, keeping its aspect ratio (like the
+        // native Cmajor plug-in). Views may bound the scale with getScaleFactorLimits().
+        custom.style.width = `${width}px`;
+        custom.style.height = `${height}px`;
+        custom.style.position = 'absolute';
+        custom.style.transformOrigin = '0 0';
+        const fit = () => {
+          const w = element.clientWidth, h = element.clientHeight;
+          if (!w || !h) return;
+          let scale = Math.min(w / width, h / height);
+          if (limits?.minScale) scale = Math.max(scale, limits.minScale);
+          if (limits?.maxScale) scale = Math.min(scale, limits.maxScale);
+          custom.style.transform = `scale(${scale})`;
+          custom.style.left = `${Math.round((w - width * scale) / 2)}px`;
+          custom.style.top = `${Math.round((h - height * scale) / 2)}px`;
+        };
+        element.appendChild(custom);
+        new ResizeObserver(fit).observe(element);
+        fit();
+      } else {
+        // A responsive view lays itself out: give it the whole window.
+        custom.style.width = '100%';
+        custom.style.height = '100%';
+        element.appendChild(custom);
+      }
+      result = { type: 'custom', width, height, lockAspect: fixed && !limits };
     } catch (error) {
       console.warn('Patch view failed, using the generic view', error);
       result.error = error;
