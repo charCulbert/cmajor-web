@@ -300,7 +300,8 @@ export async function mountPatchView(container, connection, type = 'custom') {
         custom.style.height = '100%';
         element.appendChild(custom);
       }
-      result = { type: 'custom', width, height, lockAspect: fixed && !limits };
+      // Scale limits only bound how far a fixed view scales; its aspect ratio stays fixed.
+      result = { type: 'custom', width, height, lockAspect: fixed };
     } catch (error) {
       console.warn('Patch view failed, using the generic view', error);
       result.error = error;
