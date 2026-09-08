@@ -1,0 +1,26 @@
+{
+  "version": "a4f1259",
+  "moduleBytes": 8736765,
+  "files": [
+    "LICENSE.txt",
+    "THIRD_PARTY_LICENSES/cmaj_api-ISC.txt",
+    "THIRD_PARTY_NOTICES.md",
+    "memory.json",
+    "module.wasm",
+    "ui/cbor.js",
+    "ui/cmaj_api/assets/cmajor-logo.svg",
+    "ui/cmaj_api/cmaj-event-listener-list.js",
+    "ui/cmaj_api/cmaj-generic-patch-view.js",
+    "ui/cmaj_api/cmaj-midi-helpers.js",
+    "ui/cmaj_api/cmaj-parameter-controls.js",
+    "ui/cmaj_api/cmaj-patch-connection.js",
+    "ui/cmaj_api/cmaj-patch-view.js",
+    "ui/cmaj_api/cmaj-piano-keyboard.js",
+    "ui/cmaj_api/cmaj-version.js",
+    "ui/endpoints.js",
+    "ui/index.html",
+    "ui/main.js",
+    "ui/patch-ui.js",
+    "ui/style.css"
+  ]
+}

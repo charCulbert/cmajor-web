@@ -1,0 +1,23 @@
+/* Mirrors the native Cmajor plug-in editor: JUCE's dark look, the patch view on top
+   and a 50 px strip below it with the status text and the Unload button. */
+:root { color-scheme: dark; background: #323e44; color: #fff; }
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: #323e44; font-family: ui-sans-serif, system-ui, sans-serif; }
+main { height: 100%; display: flex; flex-direction: column; padding: 0; }
+#view { flex: 1; min-height: 0; overflow: auto; background: #1a1a1a; }
+#view[hidden] { display: none; }
+#view > * { min-height: 100%; }
+#strip { display: flex; gap: 4px; padding: 4px; align-items: stretch; }
+main.loaded #strip { flex: none; height: 50px; }
+main:not(.loaded) #strip { flex: 1; min-height: 0; }
+#status { flex: 1; margin: 0; padding: 6px 8px; border-radius: 3px; background: #263238; color: #fff;
+          font: 18px/1.35 Menlo, Consolas, "Liberation Mono", monospace; white-space: pre-wrap; overflow: auto; }
+main.loaded #status { font-size: 12px; line-height: 1.3; }
+#status.error { color: #ff8a80; }
+.buttons { display: flex; flex-direction: column; gap: 4px; }
+button { min-width: 80px; height: 30px; border: 0; border-radius: 3px; background: #42a2c8; color: #fff; font: 600 13px/1 ui-sans-serif, system-ui, sans-serif; cursor: pointer; }
+button:hover { background: #4fb4dc; }
+button[hidden] { display: none; }
+#drop-overlay { position: fixed; inset: 0; display: none; background: rgba(144, 238, 144, 0.3); pointer-events: none; }
+main.dragging #drop-overlay { display: block; }

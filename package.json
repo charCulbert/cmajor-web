@@ -12,7 +12,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test test/*.test.js",
-    "sync:cmajor-examples": "node scripts/sync-cmajor-examples.mjs"
+    "sync:cmajor-examples": "node scripts/sync-cmajor-examples.mjs",
+    "sync:wclap-shell": "node scripts/sync-wclap-shell.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.18.6",

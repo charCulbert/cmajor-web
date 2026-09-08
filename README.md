@@ -11,12 +11,26 @@ Loading and editing cmajor patches on the web, compiling them with the cmajor co
 - Project explorer, local-folder import, draft recovery, and compressed share links
 - Direct loading from public GitHub repositories
 - Loads all Cmajor example projects, including their UIs (where applicable)
+- Export as WCLAP plug-in: links the compiled DSP into a prebuilt shell and downloads a `.wclap.tar.gz` for browser hosts such as wclap-browser-daw, all in the browser
 
 ## GitHub example
 
 The repository includes a small polyphonic FM synth. You can open it in the web playground with the following link. This also demonstrates the link format for loading any GitHub repository into it.
 
 - [Open the FM synth in Cmajor Web](https://charculbert.github.io/cmajor-web/#github=charCulbert%2Fcmajor-web&ref=main&path=examples%2Fsimple-fm)
+
+## Exporting WCLAP plug-ins
+
+Explorer → `•••` → *Export as WCLAP plug-in…* compiles the project, links the compiler's
+WebAssembly DSP object into the vendored [wclap-cmajor-shell](https://github.com/charCulbert/wclap-cmajor-shell)
+(`public/wclap-shell/`), bundles the patch's own GUI under `ui/patch/`, and downloads a
+`.wclap.tar.gz`. The DSP runs as ordinary JIT-compiled WebAssembly inside the plug-in, and the
+patch's view, worker and resources are served by the plug-in through `clap.webview`.
+
+The pieces live in `src/wclap-export/`: `runtime-info.js` recovers the endpoint ABI from the
+generated JavaScript class, `wasm-linker.js` appends the DSP object to the shell module and
+patches its header, `tar.js` packages the bundle. The shell itself is built with the WASI SDK in
+its own repository and vendored here with `npm run sync:wclap-shell`.
 
 ## Compiler and license
 

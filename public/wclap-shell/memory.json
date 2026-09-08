@@ -1,0 +1,6 @@
+{
+  "minimumBytes": 67108864,
+  "recommendedInitialBytes": 134217728,
+  "recommendedMaximumBytes": 536870912,
+  "shared": true
+}

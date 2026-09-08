@@ -169,6 +169,7 @@ document.querySelector("#app").innerHTML = `
             <button id="more" type="button" aria-label="Open or import local files" aria-expanded="false" aria-controls="file-actions" title="Open or import local files">•••</button>
             <div id="file-actions" class="file-actions" hidden>
               <button id="download">Download current file</button>
+              <button id="export-wclap">Export as WCLAP plug-in…</button>
               <button id="import">Import one file…</button>
               <button id="import-project">Open local project folder…</button>
               <button id="open-github">Open GitHub project…</button>
@@ -381,7 +382,7 @@ document.querySelector("#app").innerHTML = `
   <div id="toast" role="status" aria-live="polite"></div>`;
 
 const elements = Object.fromEntries([
-  "main-layout", "preview-resizer", "examples", "build", "stop", "volume", "volume-value", "share", "theme", "more", "file-actions", "download", "import", "import-project", "open-github", "file-input", "project-input", "diagnostic-dialog", "diagnostic-dialog-title", "diagnostic-details", "github-dialog", "github-dialog-title", "github-location-fields", "github-location", "github-manifest-fields", "github-manifest", "github-confirm", "start-gate", "start-app",
+  "main-layout", "preview-resizer", "examples", "build", "stop", "volume", "volume-value", "share", "theme", "more", "file-actions", "download", "export-wclap", "import", "import-project", "open-github", "file-input", "project-input", "diagnostic-dialog", "diagnostic-dialog-title", "diagnostic-details", "github-dialog", "github-dialog-title", "github-location-fields", "github-location", "github-manifest-fields", "github-manifest", "github-confirm", "start-gate", "start-app",
   "vim", "auto-check", "new-file", "new-folder", "active-file-name", "file-tree", "explorer-context-menu", "explorer-resizer", "cursor-position", "check-state", "draft-state", "patch-name", "audio-state", "attribution", "audio-input", "audio-source", "audio-input-channels", "impulse-controls", "fire-impulse", "synth-controls", "synth-waveform", "synth-piano", "device-controls", "audio-device", "enable-audio-input", "wav-controls", "wav-input", "play-wav", "stop-wav", "loop-wav", "wav-info", "input-status", "midi-input", "docked-midi-piano", "docked-sequencer", "sequencer-panel", "sequencer-play", "sequencer-bpm", "open-sequencer", "docked-sequencer-editor", "sequencer-editor", "sequencer-window", "floating-sequencer", "floating-sequencer-play", "floating-sequencer-bpm", "midi-device", "open-keyboard", "keyboard-window", "floating-keyboard", "midi-piano", "midi-octave-down", "midi-octave-up", "midi-octave-label", "open-plugin", "patch-window", "floating-view-toggle", "floating-view", "parameters-home", "parameters", "float-meter", "docked-meter", "meter-panel", "meter-window", "floating-meter", "floating-meter-display", "meter", "cpu-meter", "cpu-level", "cpu-bar", "floating-cpu-meter", "floating-cpu-level", "floating-cpu-bar", "float-scope", "docked-scope", "docked-scope-display", "docked-scope-persistence-canvas", "scope-panel", "scope-window", "floating-scope", "scope", "scope-settings-toggle", "scope-settings-menu", "scope-trigger", "scope-trigger-level", "scope-size", "scope-range", "scope-offset", "scope-persistence", "scope-persistence-canvas", "scope-freeze", "scope-duration", "compiler-version", "diagnostic-output", "toast",
 ].map((id) => [id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()), document.getElementById(id)]));
 
@@ -782,6 +783,7 @@ elements.more.addEventListener("click", () => {
   }
 });
 elements.download.addEventListener("click", downloadSource);
+elements.exportWclap.addEventListener("click", () => void exportWclapPlugin());
 elements.import.addEventListener("click", () => elements.fileInput.click());
 elements.importProject.addEventListener("click", openProjectFolder);
 elements.openGithub.addEventListener("click", () => void requestGitHubProject());
@@ -2544,6 +2546,40 @@ function downloadSource() {
   const blob = new Blob([file.content], { type: "text/plain;charset=utf-8" });
   const anchor = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: file.path.split("/").at(-1) });
   anchor.click(); URL.revokeObjectURL(anchor.href);
+}
+
+/**
+ * Compiles the project and links it into the vendored wclap-cmajor-shell, producing a
+ * `.wclap.tar.gz` that WCLAP hosts install. Everything happens in this tab.
+ */
+let exportID = 0;
+async function exportWclapPlugin() {
+  elements.fileActions.hidden = true;
+  const id = ++exportID;
+  const files = compilerProjectFiles();
+  showDiagnostic("busy", "Exporting WCLAP plug-in…", "Compiling the patch in the browser Worker.");
+  const result = await compile(files, id, "export");
+  if (!result.ok) {
+    showDiagnostic("error", "Export failed · the patch did not compile", result.error);
+    return;
+  }
+  try {
+    const { exportWclap } = await import("./wclap-export/export-wclap.js");
+    const { archive, fileName, name, stats } = await exportWclap({
+      code: result.code, compilerVersion: result.version, manifestPath, files,
+      onStage: (stage) => showDiagnostic("busy", "Exporting WCLAP plug-in…", `${stage}…`),
+    });
+    const blob = new Blob([archive], { type: "application/gzip" });
+    const anchor = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: fileName });
+    anchor.click();
+    setTimeout(() => URL.revokeObjectURL(anchor.href), 60000);
+    showDiagnostic("success", `Exported ${name} as a WCLAP plug-in`,
+      `${fileName} · ${(archive.length / 1024).toFixed(0)} KiB · ${stats.dspFunctions} DSP functions linked into the shell, ${stats.files} files in the bundle. Install it in a WCLAP host such as wclap-browser-daw.`);
+    toast(`Exported ${fileName}`);
+  } catch (error) {
+    console.error(error);
+    showDiagnostic("error", "Export failed", error instanceof Error ? error.message : String(error));
+  }
 }
 
 async function importSource() {
