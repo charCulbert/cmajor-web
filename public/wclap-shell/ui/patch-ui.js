@@ -260,54 +260,18 @@ function normalisePath(path) {
 export async function mountPatchView(container, connection, type = 'custom') {
   container.replaceChildren();
   const view = connection.manifest?.view;
-  let result = { type: 'generic', width: 500, height: 400 };
+  // Same as the native Cmajor plug-in: cmaj_api's holder shows the manifest's view (or the
+  // generic view) and applies the view's own scale rules (getScaleFactorLimits) when resized.
+  let result = { type: view?.src && type !== 'generic' ? 'custom' : 'generic', width: view?.width > 10 ? view.width : 500, height: view?.height > 10 ? view.height : 400 };
   let element;
-  if (type !== 'generic' && view?.src) {
-    try {
-      const viewModule = await import(connection.getResourceAddress(view.src));
-      const custom = await viewModule?.default?.(connection);
-      if (!custom) throw new Error('The view module returned nothing');
-      custom.style.display = 'block';
-      const fixed = view.width > 10 && view.height > 10;
-      const limits = custom.getScaleFactorLimits?.();
-      const width = fixed ? view.width : 500, height = fixed ? view.height : 400;
-      element = document.createElement('div');
-      element.className = 'cmaj-scaled-view';
-      element.style.cssText = 'display:block;width:100%;height:100%;position:relative;overflow:hidden;';
-      if (fixed) {
-        // A fixed-size view: scale it to fill the window, keeping its aspect ratio (like the
-        // native Cmajor plug-in). Views may bound the scale with getScaleFactorLimits().
-        custom.style.width = `${width}px`;
-        custom.style.height = `${height}px`;
-        custom.style.position = 'absolute';
-        custom.style.transformOrigin = '0 0';
-        const fit = () => {
-          const w = element.clientWidth, h = element.clientHeight;
-          if (!w || !h) return;
-          let scale = Math.min(w / width, h / height);
-          if (limits?.minScale) scale = Math.max(scale, limits.minScale);
-          if (limits?.maxScale) scale = Math.min(scale, limits.maxScale);
-          custom.style.transform = `scale(${scale})`;
-          custom.style.left = `${Math.round((w - width * scale) / 2)}px`;
-          custom.style.top = `${Math.round((h - height * scale) / 2)}px`;
-        };
-        element.appendChild(custom);
-        new ResizeObserver(fit).observe(element);
-        fit();
-      } else {
-        // A responsive view lays itself out: give it the whole window.
-        custom.style.width = '100%';
-        custom.style.height = '100%';
-        element.appendChild(custom);
-      }
-      // Scale limits only bound how far a fixed view scales; its aspect ratio stays fixed.
-      result = { type: 'custom', width, height, lockAspect: fixed };
-    } catch (error) {
-      console.warn('Patch view failed, using the generic view', error);
-      result.error = error;
-    }
+  try {
+    element = await createPatchViewHolder(connection, result.type);
+    if (!element) throw new Error('The view module returned nothing');
+  } catch (error) {
+    console.warn('Patch view failed, using the generic view', error);
+    result = { ...result, type: 'generic', error };
+    element = await createPatchViewHolder(connection, 'generic');
   }
-  if (!element) element = await createPatchViewHolder(connection, 'generic');
   if (element) container.appendChild(element);
   connection.requestStatusUpdate();
   return result;
