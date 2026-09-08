@@ -2,6 +2,7 @@
 // hosts install (the same layout clap-wrapper's `cmake -E tar cfz --format=gnutar` makes).
 
 const BLOCK = 512;
+const FIXED_MTIME = Date.UTC(2026, 0, 1) / 1000;
 const encoder = new TextEncoder();
 
 /**
@@ -10,7 +11,8 @@ const encoder = new TextEncoder();
  */
 export function createTar(entries) {
   const parts = [];
-  const mtime = Math.floor(Date.now() / 1000);
+  // A fixed timestamp keeps archives reproducible: the same patch and shell give the same bytes.
+  const mtime = FIXED_MTIME;
   const directories = new Set();
   for (const entry of entries) {
     // Emit each parent directory once; some extractors need them to exist.

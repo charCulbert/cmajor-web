@@ -27,6 +27,13 @@ WebAssembly DSP object into the vendored [wclap-cmajor-shell](https://github.com
 `.wclap.tar.gz`. The DSP runs as ordinary JIT-compiled WebAssembly inside the plug-in, and the
 patch's view, worker and resources are served by the plug-in through `clap.webview`.
 
+The same export runs from the command line, producing byte-identical bundles:
+
+```sh
+node scripts/export-wclap.mjs path/to/patch-folder --out wclap-exports
+node scripts/export-wclap.mjs --examples --out wclap-exports   # every upstream example (needs ../cmajor)
+```
+
 The pieces live in `src/wclap-export/`: `runtime-info.js` recovers the endpoint ABI from the
 generated JavaScript class, `wasm-linker.js` appends the DSP object to the shell module and
 patches its header, `tar.js` packages the bundle. The shell itself is built with the WASI SDK in

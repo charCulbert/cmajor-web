@@ -17,7 +17,7 @@ const HEADER_VERSION = 1;
 // ---------- binary reader ----------
 class Reader {
   constructor(bytes, pos = 0) { this.b = bytes; this.p = pos; }
-  u8() { return this.b[this.p++]; }
+  u8() { if (this.p >= this.b.length) throw new Error("Unexpected end of WebAssembly section"); return this.b[this.p++]; }
   u32() {
     let r = 0, s = 0, x;
     do { x = this.b[this.p++]; r |= (x & 0x7f) << s; s += 7; } while (x & 0x80);
@@ -100,12 +100,24 @@ function parseDataSegments(sec) {
   for (let i = 0; i < n; i++) {
     const flags = r.u32();
     if (flags === 2) r.u32();
-    if (flags !== 1) { while (r.u8() !== 0x0b); }
+    if (flags !== 1) skipConstExpression(r);
     const size = r.u32(); const dataStart = r.p; const data = r.bytes(size);
     out.push({ flags, data, dataStartInPayload: dataStart });
   }
   return out;
 }
+/** Skips an active segment's offset expression (`i32.const n end` or `global.get i end`); the
+ *  LEB bytes of a large constant can themselves contain 0x0b, so scanning for `end` is unsafe. */
+function skipConstExpression(r) {
+  for (;;) {
+    const op = r.u8();
+    if (op === 0x0b) return;
+    if (op === 0x41 || op === 0x23) r.s32();           // i32.const / global.get
+    else if (op === 0x42) { while (r.u8() & 0x80); }    // i64.const
+    else throw new Error(`Unsupported opcode 0x${op.toString(16)} in a data segment offset`);
+  }
+}
+
 function parseTable(sec) {
   if (!sec) throw new Error("The shell module has no function table");
   const r = new Reader(sec.payload); const n = r.u32(); if (n !== 1) throw new Error("Expected exactly one table in the shell");
