@@ -57,6 +57,12 @@ async function presentSession(session) {
   startPatchWorker(connection).catch((error) => showError(`The patch worker failed: ${error.message}`));
   const mounted = await mountPatchView(viewContainer, connection, 'custom');
   if (mounted.error) showError(`The patch GUI could not be loaded (${mounted.error.message}); showing the generic view`);
+  // The view's own scale limits (the ones cmaj_api scales by) become the window's size limits,
+  // so the host cannot shrink the window to where the view would be cut off.
+  if (mounted.type === 'custom') {
+    const limits = viewContainer.querySelector('cmaj-patch-view-holder')?.view?.getScaleFactorLimits?.() ?? {};
+    send({ t: 'limits', w: mounted.width, h: mounted.height, min: Number(limits.minScale) || 1, max: Number(limits.maxScale) || 0 });
+  }
   pollTimer = setInterval(() => send({ t: 'poll' }), pollIntervalMs);
 }
 
