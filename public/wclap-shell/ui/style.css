@@ -1,16 +1,16 @@
 /* Mirrors the native Cmajor plug-in editor: JUCE's dark look, the patch view on top
    and a 50 px strip below it with the status text and the Unload button. */
-:root { color-scheme: dark; background: #323e44; color: #fff; }
+:root { color-scheme: dark; background: #1a1a1a; color: #fff; }
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
-body { background: #323e44; font-family: ui-sans-serif, system-ui, sans-serif; }
+body { background: #1a1a1a; font-family: ui-sans-serif, system-ui, sans-serif; }
 main { height: 100%; display: flex; flex-direction: column; padding: 0; }
 #view { flex: 1; min-height: 0; overflow: auto; background: #1a1a1a; }
 #view[hidden] { display: none; }
 #view > * { min-height: 100%; }
-#strip { display: flex; gap: 4px; padding: 4px; align-items: stretch; }
-main.loaded #strip { flex: none; height: 50px; }
-main:not(.loaded) #strip { flex: 1; min-height: 0; }
+#view cmaj-patch-view-holder { height: 100%; }
+#strip { display: flex; gap: 4px; padding: 4px; align-items: stretch; flex: none; }
+#strip[hidden] { display: none; }
 #status { flex: 1; margin: 0; padding: 6px 8px; border-radius: 3px; background: #263238; color: #fff;
           font: 18px/1.35 Menlo, Consolas, "Liberation Mono", monospace; white-space: pre-wrap; overflow: auto; }
 main.loaded #status { font-size: 12px; line-height: 1.3; }

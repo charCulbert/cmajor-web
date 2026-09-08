@@ -268,12 +268,27 @@ export async function mountPatchView(container, connection, type = 'custom') {
       const custom = await viewModule?.default?.(connection);
       if (!custom) throw new Error('The view module returned nothing');
       custom.style.display = 'block';
-      if (view.width > 10) custom.style.width = `${view.width}px`;
-      if (view.height > 10) custom.style.height = `${view.height}px`;
-      element = await createPatchViewHolder({ manifest: {} }, 'generic');
-      element.view = custom;
-      element.replaceChildren();
-      result = { type: 'custom', width: view.width > 10 ? view.width : 500, height: view.height > 10 ? view.height : 400 };
+      const width = view.width > 10 ? view.width : 500, height = view.height > 10 ? view.height : 400;
+      custom.style.width = `${width}px`;
+      custom.style.height = `${height}px`;
+      // Like the native Cmajor plug-in: scale the view to fill the window, keeping its aspect ratio.
+      element = document.createElement('div');
+      element.className = 'cmaj-scaled-view';
+      element.style.cssText = 'display:block;width:100%;height:100%;position:relative;overflow:hidden;';
+      custom.style.position = 'absolute';
+      custom.style.transformOrigin = '0 0';
+      const fit = () => {
+        const w = element.clientWidth, h = element.clientHeight;
+        if (!w || !h) return;
+        const scale = Math.min(w / width, h / height);
+        custom.style.transform = `scale(${scale})`;
+        custom.style.left = `${Math.round((w - width * scale) / 2)}px`;
+        custom.style.top = `${Math.round((h - height * scale) / 2)}px`;
+      };
+      element.appendChild(custom);
+      new ResizeObserver(fit).observe(element);
+      fit();
+      result = { type: 'custom', width, height };
     } catch (error) {
       console.warn('Patch view failed, using the generic view', error);
       result.error = error;
