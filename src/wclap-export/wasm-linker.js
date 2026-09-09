@@ -84,7 +84,7 @@ function parseImports(sec) {
     let type;
     if (kind === 0) type = r.u32();
     else if (kind === 1) { r.u8(); const f = r.u8(); r.u32(); if (f & 1) r.u32(); }
-    else if (kind === 2) { const f = r.u8(); r.u32(); if (f & 1) r.u32(); }
+    else if (kind === 2) { const f = r.u8(); type = { minimum: r.u32(), maximum: f & 1 ? r.u32() : null, shared: !!(f & 2) }; }
     else if (kind === 3) { r.u8(); r.u8(); }
     else throw new Error("Unknown import kind " + kind);
     out.push({ module, name, kind, type });
@@ -334,6 +334,21 @@ export function linkCmajorIntoShell(shellBytes, dspBytes, { metadata, slots, deb
     else if (sec.id === 0 && sec.name === "name") continue; // function names would be stale
     if (sec.id === 0) out.push(section(0, new Writer().push(encU32(new TextEncoder().encode(sec.name).length)).push(new TextEncoder().encode(sec.name)).push(payload).bytes()));
     else out.push(section(sec.id, payload));
+  }
+  // Some WCLAP hosts size the plug-in's memory from the module's byte length alone and never
+  // read its declared minimum, so a module whose memory needs exceed its file size (ours: an
+  // 8 MiB shadow stack) fails to instantiate there. An inert custom section pads the file up to
+  // the declared minimum; it compresses to almost nothing and costs no memory at run time.
+  const memoryImport = sImports.find((i) => i.kind === 2);
+  const requiredBytes = (memoryImport?.type?.minimum ?? 0) * 65536;
+  const bodyLength = out.len;
+  if (requiredBytes > bodyLength) {
+    const name = new TextEncoder().encode("wclap-cmajor-shell.padding");
+    const padding = requiredBytes - bodyLength - (1 + 5 + 1 + name.length);   // id, padded size, name
+    if (padding > 0) {
+      const w = new Writer().u8(0).push(padded5(padding + 1 + name.length)).u8(name.length).push(name).push(new Uint8Array(padding));
+      out.push(w.bytes());
+    }
   }
   return {
     bytes: out.bytes(),
