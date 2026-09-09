@@ -77,6 +77,9 @@ class SimpleFMSynthView extends HTMLElement
     connectedCallback()    { this.attachParameterListeners(); }
     disconnectedCallback() { this.detachParameterListeners(); }
 
+    /** Lets hosts scale the view to fit their window (cmaj_api reads this). */
+    getScaleFactorLimits() { return { minScale: 0.5, maxScale: 2.0 }; }
+
     createControl (parameter)
     {
         const label = document.createElement ("label");
