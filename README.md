@@ -21,20 +21,33 @@ The repository includes a small polyphonic FM synth. You can open it in the web 
 
 ## Exporting WCLAP plug-ins
 
-Explorer → `•••` → *Export as WCLAP plug-in…* compiles the project, links the compiler's
+The toolbar's *Export WCLAP* button compiles the project, links the compiler's
 WebAssembly DSP object into the vendored [wclap-cmajor-shell](https://github.com/charCulbert/wclap-cmajor-shell)
 (`public/wclap-shell/`), bundles the patch's own GUI under `ui/patch/`, and downloads a
 `.wclap.tar.gz`. The DSP runs as ordinary JIT-compiled WebAssembly inside the plug-in, and the
 patch's view, worker and resources are served by the plug-in through `clap.webview`.
 
-The same export runs from the command line, producing byte-identical bundles:
+The same export runs headlessly from the command line with the pinned embedded compiler—no
+browser or native `cmaj` installation is needed:
 
 ```sh
-node scripts/export-wclap.mjs path/to/patch-folder --out wclap-exports
-node scripts/export-wclap.mjs --examples --out wclap-exports   # every upstream example (needs ../cmajor)
+npm run export:wclap -- path/to/Patch.cmajorpatch
+./bin/cmajor-web.mjs export-wclap path/to/Patch.cmajorpatch
+./bin/cmajor-web.mjs export-wclap path/to/patch-folder --out wclap-exports --json
 ```
 
-The pieces live in `src/wclap-export/`: `runtime-info.js` recovers the endpoint ABI from the
+By default the command writes only `<patch name>.wclap.tar.gz` in the current directory; all
+compilation and packaging intermediates stay in memory.
+
+After linking the package (`npm link`), the executable is available anywhere:
+
+```sh
+cmajor-web export-wclap path/to/patch-folder
+cmajor-web export-wclap --examples --out wclap-exports  # needs the sibling ../cmajor checkout
+```
+
+The previous `node scripts/export-wclap.mjs …` entry point remains available. The Node adapter
+lives in `src/node/`; the shared browser/CLI pieces live in `src/wclap-export/`. `runtime-info.js` recovers the endpoint ABI from the
 generated JavaScript class, `wasm-linker.js` appends the DSP object to the shell module and
 patches its header, `tar.js` packages the bundle. The shell itself is built with the WASI SDK in
 its own repository and vendored here with `npm run sync:wclap-shell`.

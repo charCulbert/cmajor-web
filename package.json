@@ -4,6 +4,20 @@
   "private": true,
   "type": "module",
   "license": "GPL-3.0-or-later",
+  "bin": {
+    "cmajor-web": "bin/cmajor-web.mjs"
+  },
+  "files": [
+    "bin/",
+    "src/node/",
+    "src/wclap-export/",
+    "public/cmaj_api/cmaj-compiler-wasm.js",
+    "public/cmaj_api/cmaj-compiler-wasm.wasm",
+    "public/cmaj_api/cmaj-embedded-compiler-worker.js",
+    "public/wclap-shell/",
+    "COPYING",
+    "THIRD_PARTY_NOTICES.md"
+  ],
   "engines": {
     "node": ">=20.19"
   },
@@ -12,6 +26,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test test/*.test.js",
+    "export:wclap": "node bin/cmajor-web.mjs export-wclap",
     "sync:cmajor-examples": "node scripts/sync-cmajor-examples.mjs",
     "sync:wclap-shell": "node scripts/sync-wclap-shell.mjs"
   },

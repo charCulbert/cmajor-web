@@ -144,6 +144,7 @@ document.querySelector("#app").innerHTML = `
       </label>
       <button id="build" class="primary"><span class="play-icon">▶</span> Build &amp; Play</button>
       <button id="stop" disabled>■ Stop</button>
+      <button id="export-wclap" title="Export as WCLAP plug-in">Export WCLAP</button>
       <label class="volume">Output <input id="volume" type="range" min="0" max="1" step="0.01" value="${preferences.volume}"><span id="volume-value">${Math.round(preferences.volume * 100)}%</span></label>
       <button id="share">Share link</button>
       <button class="theme-toggle" id="theme" type="button" aria-pressed="false" aria-label="Switch to light theme" title="Light theme">
@@ -169,7 +170,6 @@ document.querySelector("#app").innerHTML = `
             <button id="more" type="button" aria-label="Open or import local files" aria-expanded="false" aria-controls="file-actions" title="Open or import local files">•••</button>
             <div id="file-actions" class="file-actions" hidden>
               <button id="download">Download current file</button>
-              <button id="export-wclap">Export as WCLAP plug-in…</button>
               <button id="import">Import one file…</button>
               <button id="import-project">Open local project folder…</button>
               <button id="open-github">Open GitHub project…</button>
