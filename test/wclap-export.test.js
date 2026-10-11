@@ -77,8 +77,9 @@ test("exports a WCLAP archive for the simple FM synth", { skip: !hasShell && "pu
   const dir = mkdtempSync(join(tmpdir(), "wclap-export-"));
   writeFileSync(join(dir, fileName), archive);
   const listing = execFileSync("tar", ["tzf", join(dir, fileName)], { encoding: "utf8" }).split("\n");
-  for (const expected of ["module.wasm", "memory.json", "ui/index.html", "ui/cmaj_api/cmaj-patch-view.js", "ui/patch/SimpleFMSynth.cmajorpatch", "ui/patch/SimpleFMSynthView.js"])
+  for (const expected of ["module.wasm", "memory.json", "ui/index.html", "ui/cmaj_api/cmaj-patch-view.js", "ui/patch/SimpleFMSynth.cmajorpatch", "ui/patch/SimpleFMSynthView.js", "LICENSE.txt", "THIRD_PARTY_NOTICES.md", "THIRD_PARTY_LICENSES/cmaj_api-ISC.txt", "THIRD_PARTY_LICENSES/cmaj_api-GPL-3.0.txt"])
     assert.ok(listing.includes(expected), `${expected} missing from the archive`);
   execFileSync("tar", ["xzf", join(dir, fileName), "-C", dir]);
   assert.ok(WebAssembly.validate(readFileSync(join(dir, "module.wasm"))));
+  assert.match(readFileSync(join(dir, "LICENSE.txt"), "utf8"), /GPL-3\.0-or-later/);
 });

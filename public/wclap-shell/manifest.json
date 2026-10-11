@@ -3,6 +3,7 @@
   "moduleBytes": 8738317,
   "files": [
     "LICENSE.txt",
+    "THIRD_PARTY_LICENSES/cmaj_api-GPL-3.0.txt",
     "THIRD_PARTY_LICENSES/cmaj_api-ISC.txt",
     "THIRD_PARTY_NOTICES.md",
     "memory.json",

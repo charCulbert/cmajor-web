@@ -2,12 +2,17 @@
 
 ## Cmajor patch-view API (`ui/cmaj_api`)
 
-- Files: `cmaj-patch-connection.js`, `cmaj-patch-view.js`, `cmaj-generic-patch-view.js`,
-  `cmaj-parameter-controls.js`, `cmaj-piano-keyboard.js`, `cmaj-midi-helpers.js`,
-  `cmaj-event-listener-list.js`, `cmaj-version.js`, `assets/cmajor-logo.svg`, copied
-  unmodified from `javascript/cmaj_api` at Cmajor revision
-  `4ba0924f3933d9650fb6a8f01f652a7236344604`.
-- License: ISC, see `THIRD_PARTY_LICENSES/cmaj_api-ISC.txt`.
+- Files copied unmodified from `javascript/cmaj_api` at Cmajor revision
+  `4ba0924f3933d9650fb6a8f01f652a7236344604`, copyright Cmajor Software Ltd. Each file is
+  licensed as its own header states:
+  - ISC, see `THIRD_PARTY_LICENSES/cmaj_api-ISC.txt`: `cmaj-patch-connection.js`,
+    `cmaj-patch-view.js`, `cmaj-generic-patch-view.js`, `cmaj-parameter-controls.js`,
+    `cmaj-midi-helpers.js`, `cmaj-event-listener-list.js`.
+  - GPLv3, see `THIRD_PARTY_LICENSES/cmaj_api-GPL-3.0.txt`: `cmaj-piano-keyboard.js`.
+  - `assets/cmajor-logo.svg` has no header; it is Cmajor's logo, distributed with Cmajor
+    under its GPLv3 option.
+- `cmaj-version.js` is not from Cmajor; it is part of this shell and covered by
+  GPL-3.0-or-later (`LICENSE.txt`).
 - These render patch GUIs (the patch's own `view` or Cmajor's generic view) the same
   way the native Cmajor plug-in does.
 
